@@ -9,7 +9,46 @@ const CONTACTS = {
   ready: false,
   telegram: "https://t.me/uliana_math_placeholder",
   vk: "https://vk.com/uliana_math_placeholder",
-  consentUrl: "#",
+};
+
+const CONSENT_DOCUMENT = {
+  title: "СОГЛАСИЕ НА ОБРАБОТКУ ПЕРСОНАЛЬНЫХ ДАННЫХ",
+  publishedDate: "21.07.2026",
+  intro:
+    "Я, заполняя форму на сайте и ставя галочку, даю согласие Самозанятой Куликовой Ульяне Дмитриевне на обработку моих персональных данных и данных моего несовершеннолетнего ребёнка.",
+  sections: [
+    {
+      title: "Перечень данных",
+      text: "ФИО родителя (законного представителя), контактный номер телефона, адрес электронной почты, имя и класс (возраст) ребёнка, а также иные данные, которые я сообщу в ходе переписки или устного общения для организации занятий.",
+    },
+    {
+      title: "Цель обработки",
+      text: "Запись на диагностику, заключение и исполнение договора на оказание консультационных услуг по математике (репетиторство), связь по организационным вопросам, отправка чеков.",
+    },
+    {
+      title: "Способы обработки",
+      text: "Сбор, запись, систематизация, накопление, хранение, уточнение, использование, удаление, уничтожение как с использованием средств автоматизации (компьютер, телефон), так и без их использования (бумажные записи).",
+    },
+    {
+      title: "Срок хранения",
+      text: "3 года с момента окончания занятий для целей бухгалтерского учёта и разрешения возможных споров. По истечении срока данные уничтожаются.",
+    },
+    {
+      title: "Передача третьим лицам",
+      text: "Не осуществляется, за исключением случаев, прямо предусмотренных законодательством РФ.",
+    },
+    {
+      title: "Отзыв согласия",
+      text: "Согласие можно отозвать в любое время, направив письменное заявление на электронную почту: uliana.kylikova@yandex.ru. В этом случае обработка данных прекращается, а данные уничтожаются в течение 30 календарных дней.",
+    },
+  ],
+  outro:
+    "Настоящее согласие действует с момента отправки формы на сайте до истечения срока хранения данных.",
+  operator: {
+    name: "Самозанятая Куликова Ульяна Дмитриевна",
+    inn: "760211618932",
+    email: "uliana.kylikova@yandex.ru",
+  },
 };
 
 /**
@@ -36,31 +75,21 @@ const navItems = [
 ];
 
 const heroProof = [
-  { value: "82", label: "мой балл ЕГЭ, профиль" },
-  { value: "2,5 года", label: "работаю с учениками" },
+  { value: "80%", label: "учеников выходят на «5»" },
+  { value: "более 3 лет", label: "работаю с учениками" },
   { value: "Онлайн", label: "доска и конспекты" },
 ];
 
 const aboutFacts = [
   {
-    label: "СОБСТВЕННЫЙ РЕЗУЛЬТАТ",
-    title: "82 БАЛЛА",
-    copy: "Профильная математика, ЕГЭ. Я сдавала тот же экзамен, к которому готовлю, и помню его изнутри — а не по методичке.",
-  },
-  {
     label: "ОБРАЗОВАНИЕ",
     title: "МОСКОВСКИЙ АВИАЦИОННЫЙ ИНСТИТУТ",
-    copy: "Информатика и вычислительная техника, бакалавриат 2026. Матанализ, линейная алгебра и дискретная математика — моя ежедневная работа, а не воспоминание со школы.",
+    copy: "Информатика и вычислительная техника, бакалавриат 2026 года.",
   },
   {
     label: "ОПЫТ",
-    title: "БОЛЕЕ 2,5 ЛЕТ",
-    copy: "Школьники с 5 по 11 класс: подготовка к экзаменам, вытягивание текущих тем и возвращение уверенности в предмете.",
-  },
-  {
-    label: "РЕЗУЛЬТАТЫ УЧЕНИКОВ",
-    title: "БОЛЬШИНСТВО — НА «5»",
-    copy: "Ученики приходят с разной базой: кто-то за оценкой в четверти, кто-то за баллом на экзамене. Большинство доходит до пятёрки.",
+    title: "БОЛЕЕ 3 ЛЕТ",
+    copy: "Школьники с 7 по 11 класс: подготовка к экзаменам, вытягивание текущих тем и возвращение уверенности в предмете.",
   },
 ];
 
@@ -88,7 +117,7 @@ const roadmapSteps = [
   {
     number: "05",
     title: "ОБРАТНАЯ СВЯЗЬ РОДИТЕЛЮ",
-    copy: "После занятия рассказываю, что разобрали, что задано и над чем работаем дальше. Родитель видит прогресс, а не только счёт за уроки.",
+    copy: "Раз в месяц отправляю родителю подробный отчёт: что прошли, как меняется уровень, над чем работаем дальше и что стоит поддержать дома. Родитель видит прогресс и мои рекомендации.",
   },
   {
     number: "06",
@@ -110,12 +139,12 @@ const formatCards = [
   },
   {
     label: "ДЛИТЕЛЬНОСТЬ",
-    title: "60 МИНУТ, ДЛЯ 5–6 КЛАССА — 40",
-    copy: "Часа хватает на разбор, практику и фиксацию следующего шага. С младшими можно договориться о сорока минутах — столько держится внимание.",
+    title: "60 МИНУТ",
+    copy: "Часа хватает на разбор, практику и фиксацию следующего шага.",
   },
   {
     label: "КЛАССЫ",
-    title: "С 5 ПО 11",
+    title: "С 7 ПО 11",
     copy: "Школьная программа, ОГЭ в 9 классе, профильная математика в 10 классе и базовая в 11.",
   },
   {
@@ -169,7 +198,7 @@ const reviews = [
     name: "Екатерина",
     meta: "Алгебра · 8 класс",
     result: "3 → 5",
-    text: "Ульяна быстро нашла, где не хватает базы, и объяснила материал нормальным языком. Оценки стали стабильнее, а главное — ребёнок начал решать самостоятельно, без угадывания.",
+    text: "Ульяна быстро нашла, где не хватает базы, и объяснила материал нормальным языком. Оценки стали стабильнее, а главное - ребёнок начал решать самостоятельно, без угадывания.",
   },
 ];
 
@@ -179,49 +208,65 @@ const pricingPlans = [
     rhythm: "ИНДИВИДУАЛЬНОЕ ЗАНЯТИЕ",
     price: "1 600 ₽",
     unit: "за 60 минут",
-    description: "Оплата после урока. Подходит, если нужно начать спокойно и без абонемента.",
+    description:
+      "Оплата после урока. Подходит, если нужно начать спокойно и без обязательств.",
     features: [
-      "60 минут занятия (5–6 класс — 40 минут)",
+      "60 минут занятия",
       "разбор текущей темы",
       "домашнее задание после урока",
-      "без обязательств: можно остановиться в любой момент",
     ],
   },
   {
-    name: "АБОНЕМЕНТ",
-    rhythm: "8 ИНДИВИДУАЛЬНЫХ ЗАНЯТИЙ",
-    price: "12 000 ₽",
-    oldPrice: "12 800 ₽",
-    discount: "−6%",
-    unit: "1 500 ₽ за час вместо 1 600 ₽",
+    name: "ГРУППА 2 ЧЕЛОВЕКА",
+    rhythm: "ЗАНИМАЕТЕСЬ ВДВОЁМ",
+    price: "1 000 ₽",
+    unit: "с одного человека за 60 минут",
     description:
-      "Восемь уроков подряд — это система, а не разовые заплатки. За абонементом закрепляется постоянное время в расписании.",
+      "Приведите друга и занимайтесь в паре: та же программа и та же доска, только вдвоём.",
     features: [
-      "8 уроков по 60 минут",
-      "единый план подготовки",
-      "постоянное время в расписании",
-      "неиспользованные занятия возвращаются",
+      "2 человека близкого уровня",
+      "60 минут занятия на общей доске",
+      "разбор задач и вопросов на двоих",
     ],
-    badge: "ОСНОВНОЙ ФОРМАТ",
+  },
+  {
+    name: "ГРУППА 3–4 ЧЕЛОВЕКА",
+    rhythm: "МИНИ-ГРУППА С ДРУЗЬЯМИ",
+    price: "800 ₽",
+    unit: "с одного человека за 60 минут",
+    description:
+      "Соберите компанию из трёх-четырёх друзей и занимайтесь вместе.",
+    features: [
+      "3–4 человека близкого уровня",
+      "60 минут занятия на общей доске",
+      "разбор задач и вопросов на всех",
+      "800 ₽ с каждого",
+    ],
+    badge: "ПРИВЕДИ ДРУЗЕЙ",
   },
 ];
+
+const tariffOptions = pricingPlans.map((plan) => ({
+  value: `${plan.name} (${plan.price})`,
+  label: `${plan.name} (${plan.price})`,
+}));
 
 const faqItems = [
   {
     q: "КАК ПРОХОДЯТ ЗАНЯТИЯ?",
-    a: "Онлайн, на платформе с интерактивной доской. Мы пишем и решаем на ней вместе — ученик не просто смотрит, а работает руками. Все конспекты, схемы и разборы остаются на платформе, к ним можно вернуться в любой момент.",
+    a: "Онлайн, на платформе с интерактивной доской. Мы пишем и решаем на ней вместе - ученик не просто смотрит, а работает руками. Все конспекты, схемы и разборы остаются на платформе, к ним можно вернуться в любой момент.",
   },
   {
     q: "С КАКИМИ КЛАССАМИ ВЫ РАБОТАЕТЕ?",
-    a: "С 5 по 11 класс. Школьная программа, подготовка к ОГЭ в 9 классе, профильная математика в 10 классе и базовая в 11.",
+    a: "С 7 по 11 класс. По договорённости - с 5 и 6 классом. Школьная программа, подготовка к ОГЭ в 9 классе, профильная математика в 10 классе и базовая в 11.",
   },
   {
     q: "СКОЛЬКО ДЛИТСЯ УРОК?",
-    a: "60 минут. С учениками 5–6 класса можно договориться о занятии на 40 минут — столько у них реально держится внимание, и растягивать час смысла нет.",
+    a: "60 минут. Часа хватает на разбор, практику и фиксацию следующего шага.",
   },
   {
-    q: "МОЖНО ЛИ ВЕРНУТЬ ДЕНЬГИ ЗА АБОНЕМЕНТ?",
-    a: "Да. Если вы решили прекратить занятия, деньги за неиспользованные уроки из абонемента возвращаются. Использованные считаются по обычной цене — 1 600 ₽ за час.",
+    q: "МОЖНО ЛИ ЗАНИМАТЬСЯ ВДВОЁМ С ДРУГОМ?",
+    a: "Да. Можно заниматься в паре - 1 000 ₽ с человека, или собрать мини-группу из 3–4 человек близкого уровня - 800 ₽ с человека. Программа та же, всё на общей доске. Приведите друзей и учитесь в комфортной компании.",
   },
   {
     q: "ЧТО, ЕСЛИ МЫ НЕ ПОДОЙДЁМ ДРУГ ДРУГУ?",
@@ -229,7 +274,7 @@ const faqItems = [
   },
   {
     q: "ВИДИТ ЛИ РОДИТЕЛЬ, ЧТО ПРОИСХОДИТ НА УРОКАХ?",
-    a: "Да. После занятия я рассказываю, что разобрали, что задано и над чем работаем дальше. Родитель понимает картину заранее, а не узнаёт о проблемах из дневника перед контрольной.",
+    a: "Да. Раз в месяц я отправляю родителю подробный отчёт: что прошли, как меняется уровень ребёнка, над чем работаем дальше и что стоит поддержать дома. Родитель понимает картину и получает мои рекомендации заранее.",
   },
 ];
 
@@ -273,7 +318,12 @@ function useActiveSection(ids) {
 
 function getMotion(shouldReduceMotion) {
   if (shouldReduceMotion) {
-    return { initial: false, whileInView: {}, viewport: {}, transition: { duration: 0 } };
+    return {
+      initial: false,
+      whileInView: {},
+      viewport: {},
+      transition: { duration: 0 },
+    };
   }
 
   return {
@@ -307,7 +357,11 @@ function SectionIntro({ titleId, eyebrow, title, copy }) {
       >
         {title}
       </h2>
-      {copy ? <p className="max-w-[64ch] text-body leading-body text-obsidian-ink/82">{copy}</p> : null}
+      {copy ? (
+        <p className="max-w-[64ch] text-body leading-body text-obsidian-ink/82">
+          {copy}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -325,7 +379,10 @@ function SectionCta({ children = "ЗАПИСАТЬСЯ НА БЕСПЛАТНУЮ
 
 function Card({ children, className = "", ...rest }) {
   return (
-    <motion.article className={`rounded-[8px] border border-sage/25 bg-bone p-28 ${className}`} {...rest}>
+    <motion.article
+      className={`rounded-[8px] border border-sage/25 bg-bone p-28 ${className}`}
+      {...rest}
+    >
       {children}
     </motion.article>
   );
@@ -340,8 +397,11 @@ function ReviewsCarousel({ shouldReduceMotion }) {
   });
 
   const goToPrevious = () =>
-    setActiveReview((current) => (current - 1 + reviews.length) % reviews.length);
-  const goToNext = () => setActiveReview((current) => (current + 1) % reviews.length);
+    setActiveReview(
+      (current) => (current - 1 + reviews.length) % reviews.length,
+    );
+  const goToNext = () =>
+    setActiveReview((current) => (current + 1) % reviews.length);
 
   return (
     <div className="mt-63">
@@ -398,7 +458,9 @@ function ReviewsCarousel({ shouldReduceMotion }) {
                 <p className="display text-label leading-label tracking-label text-obsidian-ink">
                   {review.name}
                 </p>
-                <p className="mt-9 text-body-sm leading-none text-pebble">{review.meta}</p>
+                <p className="mt-9 text-body-sm leading-none text-pebble">
+                  {review.meta}
+                </p>
               </figcaption>
             </div>
 
@@ -411,7 +473,10 @@ function ReviewsCarousel({ shouldReduceMotion }) {
         ))}
       </motion.div>
 
-      <div className="mt-34 flex justify-center" aria-label="Навигация по отзывам">
+      <div
+        className="mt-34 flex justify-center"
+        aria-label="Навигация по отзывам"
+      >
         {reviews.map((review, index) => (
           <button
             key={review.name}
@@ -435,8 +500,90 @@ function ReviewsCarousel({ shouldReduceMotion }) {
   );
 }
 
+function ConsentModal({ isOpen, onClose }) {
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian-ink/55 px-23 py-34"
+      role="presentation"
+      onClick={onClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="consent-modal-title"
+        className="grid max-h-[80vh] w-full max-w-[560px] gap-23 overflow-y-auto rounded-[8px] border border-sage/25 bg-bone p-34"
+        onClick={(event) => event.stopPropagation()}
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="flex items-start justify-between gap-18">
+          <h2
+            id="consent-modal-title"
+            className="display max-w-[440px] text-h3 leading-h3 tracking-[0.04em] text-obsidian-ink"
+          >
+            {CONSENT_DOCUMENT.title}
+          </h2>
+          <button
+            type="button"
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-sage/40 text-body leading-none text-sage-dark transition-colors hover:bg-mist"
+            onClick={onClose}
+            aria-label="Закрыть"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="grid gap-18 text-body-sm leading-body-sm text-obsidian-ink/82">
+          <p>{CONSENT_DOCUMENT.intro}</p>
+
+          {CONSENT_DOCUMENT.sections.map((section) => (
+            <p key={section.title}>
+              <strong className="text-obsidian-ink">{section.title}.</strong>{" "}
+              {section.text}
+            </p>
+          ))}
+
+          <p>{CONSENT_DOCUMENT.outro}</p>
+
+          <p className="text-pebble">
+            Дата публикации: {CONSENT_DOCUMENT.publishedDate}
+          </p>
+
+          <div className="border-t border-sage/20 pt-18">
+            <p className="micro-label mb-9 text-ash">РЕКВИЗИТЫ ОПЕРАТОРА</p>
+            <p>{CONSENT_DOCUMENT.operator.name}</p>
+            <p>ИНН: {CONSENT_DOCUMENT.operator.inn}</p>
+            <p>Email: {CONSENT_DOCUMENT.operator.email}</p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function BookingForm() {
   const [status, setStatus] = useState("idle");
+  const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -457,117 +604,307 @@ function BookingForm() {
       return;
     }
 
-    window.open(`${CONTACTS.telegram}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+    window.open(
+      `${CONTACTS.telegram}?text=${encodeURIComponent(message)}`,
+      "_blank",
+      "noopener",
+    );
     setStatus("sent");
   };
 
   const note = {
-    pending: "Форма собрана верно. Отправка подключится, когда появится рабочий телеграм.",
-    sent: "Открываю телеграм — останется нажать «Отправить».",
-    idle: "Отвечаю в течение дня. Первая встреча ни к чему не обязывает.",
+    pending:
+      "Форма собрана верно. Отправка подключится, когда появится рабочий телеграм.",
+    sent: "Открываю телеграм - останется нажать «Отправить».",
+    idle: "Отвечаю в течение дня.",
   }[status];
 
   return (
-    <form className="grid gap-34" onSubmit={handleSubmit}>
-      <div className="grid gap-28 sm:grid-cols-2">
-        <div>
-          <label className="field-label" htmlFor="name">
-            Как вас зовут
-          </label>
-          <input
-            className="field-input"
-            id="name"
-            name="name"
-            type="text"
-            required
-            autoComplete="name"
-            placeholder="Имя"
-          />
-        </div>
+    <>
+      <form className="grid gap-34" onSubmit={handleSubmit}>
+        <div className="grid gap-28 sm:grid-cols-2">
+          <div>
+            <label className="field-label" htmlFor="name">
+              Как вас зовут
+            </label>
+            <input
+              className="field-input"
+              id="name"
+              name="name"
+              type="text"
+              required
+              autoComplete="name"
+              placeholder="Имя"
+            />
+          </div>
 
-        <div>
-          {/* id не должен совпадать с id секции #contact — иначе якорь ведёт в поле. */}
-          <label className="field-label" htmlFor="lead-contact">
-            Телефон или телеграм
-          </label>
-          <input
-            className="field-input"
-            id="lead-contact"
-            name="contact"
-            type="text"
-            required
-            autoComplete="tel"
-            placeholder="+7 900 000-00-00 или @nickname"
-          />
-        </div>
+          <div>
+            {/* id не должен совпадать с id секции #contact — иначе якорь ведёт в поле. */}
+            <label className="field-label" htmlFor="lead-contact">
+              Телефон или телеграм
+            </label>
+            <input
+              className="field-input"
+              id="lead-contact"
+              name="contact"
+              type="text"
+              required
+              autoComplete="tel"
+              placeholder="+7 900 000-00-00 или @nickname"
+            />
+          </div>
 
-        <div>
-          <label className="field-label" htmlFor="grade">
-            Класс
-          </label>
-          <select className="field-input" id="grade" name="grade" required defaultValue="">
-            <option value="" disabled>
-              Выберите класс
-            </option>
-            {[5, 6, 7, 8, 9, 10, 11].map((grade) => (
-              <option key={grade} value={`${grade} класс`}>
-                {grade} класс
+          <div>
+            <label className="field-label" htmlFor="grade">
+              Класс
+            </label>
+            <select
+              className="field-input"
+              id="grade"
+              name="grade"
+              required
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Выберите класс
               </option>
-            ))}
-          </select>
-        </div>
+              {[5, 6, 7, 8, 9, 10, 11].map((grade) => (
+                <option key={grade} value={`${grade} класс`}>
+                  {grade} класс
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <label className="field-label" htmlFor="goal">
-            Цель
-          </label>
-          <select className="field-input" id="goal" name="goal" required defaultValue="">
-            <option value="" disabled>
-              Выберите цель
-            </option>
-            {goalOptions.map((goal) => (
-              <option key={goal} value={goal}>
-                {goal}
+          <div>
+            <label className="field-label" htmlFor="goal">
+              Цель
+            </label>
+            <select
+              className="field-input"
+              id="goal"
+              name="goal"
+              required
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Выберите цель
               </option>
-            ))}
-          </select>
+              {goalOptions.map((goal) => (
+                <option key={goal} value={goal}>
+                  {goal}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
 
-      {/* TODO: подставить реальный документ — текст согласия берём у мамы Ульяны. */}
-      <label className="flex items-start gap-14 text-body-sm leading-body-sm text-obsidian-ink/82">
-        <input
-          className="mt-4 h-[18px] w-[18px] shrink-0 accent-sage-dark"
-          type="checkbox"
-          name="consent"
-          required
-        />
-        <span>
-          Согласен(-на) на{" "}
-          <a className="text-sage-dark underline underline-offset-4" href={CONTACTS.consentUrl}>
-            обработку персональных данных
-          </a>
-          .
-        </span>
-      </label>
+        <label className="flex items-start gap-14 text-body-sm leading-body-sm text-obsidian-ink/82">
+          <input
+            className="mt-4 h-[18px] w-[18px] shrink-0 accent-sage-dark"
+            type="checkbox"
+            name="consent"
+            required
+          />
+          <span>
+            Согласен(-на) на{" "}
+            <button
+              type="button"
+              className="text-sage-dark underline underline-offset-4"
+              onClick={() => setIsConsentModalOpen(true)}
+            >
+              обработку персональных данных
+            </button>
+            .
+          </span>
+        </label>
 
-      <div className="grid justify-items-start gap-18">
-        <button className="pill-link pill-link--solid" type="submit">
-          ЗАПИСАТЬСЯ НА БЕСПЛАТНУЮ ДИАГНОСТИКУ <span aria-hidden="true">→</span>
-        </button>
+        <div className="grid justify-items-start gap-18">
+          <button className="pill-link pill-link--solid" type="submit">
+            ЗАПИСАТЬСЯ НА БЕСПЛАТНУЮ ДИАГНОСТИКУ{" "}
+            <span aria-hidden="true">→</span>
+          </button>
 
-        <p aria-live="polite" className="text-body-sm leading-body-sm text-pebble">
-          {note}
-        </p>
-      </div>
-    </form>
+          <p
+            aria-live="polite"
+            className="text-body-sm leading-body-sm text-pebble"
+          >
+            {note}
+          </p>
+        </div>
+      </form>
+
+      <ConsentModal
+        isOpen={isConsentModalOpen}
+        onClose={() => setIsConsentModalOpen(false)}
+      />
+    </>
+  );
+}
+
+/**
+ * Прежде чем платить, нужно понять, за кого именно платят: без имени и класса
+ * оплата приходит "от неизвестного" и её не с чем сопоставить. Форма собирает
+ * эти два поля и передаёт их мне в Telegram — дальше я отвечаю плательщику
+ * персональной ссылкой на оплату.
+ */
+/**
+ * ЗАГЛУШКА без реального платёжного бэкенда: заявка уходит мне в Telegram,
+ * дальше связываюсь с плательщиком сама (или менеджер) и присылаю оплату вручную.
+ * Когда подключим реальный эквайринг — сюда встанет редирект на платёжную страницу
+ * и обработка вебхука об оплате на бэкенде.
+ */
+function PaymentModal({ isOpen, onClose }) {
+  const [status, setStatus] = useState("idle");
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+
+    const message = [
+      "Хочу оплатить занятие",
+      `ФИО ребёнка: ${data.get("childName")}`,
+      `Тариф: ${data.get("tariff")}`,
+    ].join("\n");
+
+    if (!CONTACTS.ready) {
+      // TODO: как появится рабочий телеграм — выставить CONTACTS.ready = true.
+      console.info(
+        `Заявка на оплату собрана, отправка пока не подключена:\n${message}`,
+      );
+      setStatus("pending");
+      return;
+    }
+
+    window.open(
+      `${CONTACTS.telegram}?text=${encodeURIComponent(message)}`,
+      "_blank",
+      "noopener",
+    );
+    setStatus("sent");
+  };
+
+  const note = {
+    pending:
+      "Заявка собрана. Отправка подключится, когда появится рабочий телеграм.",
+    sent: "Открываю телеграм - дальше с вами свяжется Ульяна или менеджер.",
+  }[status];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian-ink/55 px-23 py-34"
+      role="presentation"
+      onClick={onClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="payment-modal-title"
+        className="w-full max-w-[420px] rounded-[8px] border border-sage/25 bg-bone p-34"
+        onClick={(event) => event.stopPropagation()}
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="flex items-start justify-between gap-18">
+          <h2
+            id="payment-modal-title"
+            className="display text-h3 leading-h3 tracking-[0.04em] text-obsidian-ink"
+          >
+            Оплатить занятие
+          </h2>
+          <button
+            type="button"
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-sage/40 text-body leading-none text-sage-dark transition-colors hover:bg-mist"
+            onClick={onClose}
+            aria-label="Закрыть"
+          >
+            ×
+          </button>
+        </div>
+
+        <form className="mt-28 grid gap-23" onSubmit={handleSubmit}>
+          <div>
+            <label className="field-label" htmlFor="childName">
+              ФИО ребёнка
+            </label>
+            <input
+              className="field-input"
+              id="childName"
+              name="childName"
+              type="text"
+              required
+              autoComplete="name"
+              placeholder="Фамилия Имя"
+            />
+          </div>
+
+          <div>
+            <label className="field-label" htmlFor="tariff">
+              Тариф
+            </label>
+            <select
+              className="field-input"
+              id="tariff"
+              name="tariff"
+              required
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Выберите тариф
+              </option>
+              {tariffOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button className="pill-link pill-link--solid" type="submit">
+            ОТПРАВИТЬ ЗАЯВКУ <span aria-hidden="true">→</span>
+          </button>
+
+          {note ? (
+            <p
+              aria-live="polite"
+              className="text-body-sm leading-body-sm text-pebble"
+            >
+              {note}
+            </p>
+          ) : null}
+        </form>
+      </motion.div>
+    </div>
   );
 }
 
 function App() {
   const shouldReduceMotion = useReducedMotion();
-  const activeSection = useActiveSection(useMemo(() => navItems.map((item) => item.id), []));
+  const activeSection = useActiveSection(
+    useMemo(() => navItems.map((item) => item.id), []),
+  );
   const reveal = getMotion(shouldReduceMotion);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-canvas text-obsidian-ink">
@@ -584,7 +921,9 @@ function App() {
         >
           <motion.figure
             className="relative m-0 min-h-[58vh] overflow-hidden bg-sage-dark lg:min-h-screen"
-            initial={shouldReduceMotion ? false : { clipPath: "inset(0 18% 0 0)" }}
+            initial={
+              shouldReduceMotion ? false : { clipPath: "inset(0 18% 0 0)" }
+            }
             animate={shouldReduceMotion ? {} : { clipPath: "inset(0 0% 0 0)" }}
             transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
           >
@@ -627,7 +966,9 @@ function App() {
                 УЛЬЯНА
                 <span className="mt-9 block text-pebble">МАТЕМАТИКА</span>
               </a>
-              <p className="micro-label text-right text-pebble">ОНЛАЙН · 5–11 КЛАСС</p>
+              <p className="micro-label text-right text-pebble">
+                ОНЛАЙН · 7–11 КЛАСС
+              </p>
             </div>
 
             <motion.div
@@ -636,12 +977,17 @@ function App() {
               animate="visible"
               variants={{
                 hidden: {},
-                visible: { transition: { staggerChildren: 0.11, delayChildren: 0.2 } },
+                visible: {
+                  transition: { staggerChildren: 0.11, delayChildren: 0.2 },
+                },
               }}
             >
               <motion.p
                 className="micro-label text-clay"
-                variants={{ hidden: { opacity: 0, y: 18 }, visible: { opacity: 1, y: 0 } }}
+                variants={{
+                  hidden: { opacity: 0, y: 18 },
+                  visible: { opacity: 1, y: 0 },
+                }}
                 transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               >
                 БЕСПЛАТНАЯ ДИАГНОСТИКА · ОНЛАЙН
@@ -650,31 +996,51 @@ function App() {
               <motion.h1
                 id="hero-title"
                 className="display max-w-[640px] text-[32px] leading-[1.2] tracking-[0.04em] text-obsidian-ink sm:text-[38px] lg:text-h1 lg:leading-h1"
-                variants={{ hidden: { opacity: 0, y: 18 }, visible: { opacity: 1, y: 0 } }}
+                variants={{
+                  hidden: { opacity: 0, y: 18 },
+                  visible: { opacity: 1, y: 0 },
+                }}
                 transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               >
-                Подготовка к ОГЭ и ЕГЭ, в которой видно каждый шаг
+                Подготовка к ОГЭ и ЕГЭ
               </motion.h1>
 
               <motion.p
                 className="max-w-[540px] text-lead leading-lead text-obsidian-ink/82"
-                variants={{ hidden: { opacity: 0, y: 18 }, visible: { opacity: 1, y: 0 } }}
+                variants={{
+                  hidden: { opacity: 0, y: 18 },
+                  visible: { opacity: 1, y: 0 },
+                }}
                 transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               >
-                Начинаем с бесплатной диагностики: нахожу настоящие пробелы и показываю маршрут до
-                экзамена. Занятия — онлайн на интерактивной доске, конспекты остаются у ученика.
+                Начинаем с бесплатной диагностики: нахожу настоящие пробелы и
+                показываю маршрут до экзамена. Занятия - онлайн на интерактивной
+                доске, конспекты остаются у ученика.
               </motion.p>
 
               <motion.div
                 className="grid gap-14"
-                variants={{ hidden: { opacity: 0, y: 18 }, visible: { opacity: 1, y: 0 } }}
+                variants={{
+                  hidden: { opacity: 0, y: 18 },
+                  visible: { opacity: 1, y: 0 },
+                }}
                 transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               >
-                <a className="pill-link pill-link--solid" href="#contact">
-                  ЗАПИСАТЬСЯ НА ДИАГНОСТИКУ <span aria-hidden="true">→</span>
-                </a>
+                <div className="flex flex-wrap gap-11">
+                  <a className="pill-link pill-link--solid" href="#contact">
+                    ЗАПИСАТЬСЯ НА ДИАГНОСТИКУ <span aria-hidden="true">→</span>
+                  </a>
+                  <button
+                    type="button"
+                    className="pill-link"
+                    onClick={() => setIsPaymentModalOpen(true)}
+                  >
+                    ОПЛАТИТЬ ЗАНЯТИЕ
+                  </button>
+                </div>
                 <p className="text-body-sm leading-none text-pebble">
-                  Первая встреча ни к чему не обязывает
+                  Первая встреча ни к чему не обязывает · оплата - для тех, кто
+                  уже занимается
                 </p>
               </motion.div>
             </motion.div>
@@ -722,7 +1088,10 @@ function App() {
 
               <div className="grid gap-18 md:grid-cols-2">
                 {aboutFacts.map((fact, index) => (
-                  <Card key={fact.label} {...cardMotion(shouldReduceMotion, index)}>
+                  <Card
+                    key={fact.label}
+                    {...cardMotion(shouldReduceMotion, index)}
+                  >
                     <p className="micro-label mb-34 text-clay">{fact.label}</p>
                     <h3 className="display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
                       {fact.title}
@@ -738,13 +1107,17 @@ function App() {
         </section>
 
         {/* ── МЕТОД ──────────────────────────────────────────────── */}
-        <section id="method" className="px-23 pb-96 sm:px-34 lg:px-63" aria-labelledby="method-title">
+        <section
+          id="method"
+          className="px-23 pb-96 sm:px-34 lg:px-63"
+          aria-labelledby="method-title"
+        >
           <motion.div {...reveal}>
             <SectionIntro
               titleId="method-title"
               eyebrow="МЕТОДИКА"
               title="Дорожная карта от знакомства до экзамена"
-              copy="Ребёнок всегда знает, что мы делаем сейчас и зачем. Родитель — тоже."
+              copy="Ребёнок всегда знает, что мы делаем сейчас и зачем. Родитель - тоже."
             />
           </motion.div>
 
@@ -755,7 +1128,10 @@ function App() {
                 className="relative overflow-hidden"
                 {...cardMotion(shouldReduceMotion, index)}
               >
-                <span className="absolute inset-x-0 top-0 h-4 bg-sage" aria-hidden="true" />
+                <span
+                  className="absolute inset-x-0 top-0 h-4 bg-sage"
+                  aria-hidden="true"
+                />
                 <span className="mb-34 flex items-center gap-18">
                   {/* sage-dark, а не sage: белое на #667f70 даёт 4.34:1 и не проходит AA. */}
                   <span className="display flex h-[38px] w-[38px] items-center justify-center rounded-full bg-sage-dark text-caption leading-caption tracking-caption text-bone">
@@ -766,7 +1142,9 @@ function App() {
                 <h3 className="display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
                   {step.title}
                 </h3>
-                <p className="mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">{step.copy}</p>
+                <p className="mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">
+                  {step.copy}
+                </p>
               </Card>
             ))}
           </div>
@@ -775,7 +1153,11 @@ function App() {
         </section>
 
         {/* ── ФОРМАТ ─────────────────────────────────────────────── */}
-        <section id="format" className="px-23 pb-96 sm:px-34 lg:px-63" aria-labelledby="format-title">
+        <section
+          id="format"
+          className="px-23 pb-96 sm:px-34 lg:px-63"
+          aria-labelledby="format-title"
+        >
           <motion.div {...reveal}>
             <SectionIntro
               titleId="format-title"
@@ -794,7 +1176,9 @@ function App() {
                 <h3 className="display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
                   {card.title}
                 </h3>
-                <p className="mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">{card.copy}</p>
+                <p className="mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">
+                  {card.copy}
+                </p>
               </Card>
             ))}
           </div>
@@ -824,17 +1208,21 @@ function App() {
         ) : null}
 
         {/* ── ТАРИФЫ ─────────────────────────────────────────────── */}
-        <section id="pricing" className="px-23 pb-96 sm:px-34 lg:px-63" aria-labelledby="pricing-title">
+        <section
+          id="pricing"
+          className="px-23 pb-96 sm:px-34 lg:px-63"
+          aria-labelledby="pricing-title"
+        >
           <motion.div {...reveal}>
             <SectionIntro
               titleId="pricing-title"
               eyebrow="ТАРИФЫ"
-              title="Оплата за урок или абонемент на 8 занятий"
-              copy="Диагностика бесплатна. Дальше — как удобнее: платить за каждый урок после занятия или взять абонемент."
+              title="Индивидуально или в мини-группе с друзьями"
+              copy="Диагностика бесплатна. Дальше - как удобнее: заниматься один на один или собрать мини-группу из друзей и платить меньше."
             />
           </motion.div>
 
-          <div className="mt-63 grid gap-18 lg:grid-cols-2">
+          <div className="mt-63 grid gap-18 md:grid-cols-2 lg:grid-cols-3">
             {pricingPlans.map((plan, index) => (
               <motion.article
                 key={plan.name}
@@ -852,11 +1240,15 @@ function App() {
                     </span>
                   ) : null}
 
-                  <p className={`micro-label ${plan.badge ? "text-bone/72" : "text-pebble"}`}>
+                  <p
+                    className={`micro-label ${plan.badge ? "text-bone/72" : "text-pebble"}`}
+                  >
                     {plan.rhythm}
                   </p>
 
-                  <h3 className="display mt-18 text-h3 leading-h3 tracking-[0.06em]">{plan.name}</h3>
+                  <h3 className="display mt-18 text-h3 leading-h3 tracking-[0.06em]">
+                    {plan.name}
+                  </h3>
 
                   <p
                     className={`mt-23 max-w-[46ch] text-body-sm leading-body-sm ${
@@ -931,18 +1323,22 @@ function App() {
           </div>
 
           <p className="mt-28 text-body-sm leading-body-sm text-pebble">
-            Оплата — после первого урока. Диагностика бесплатна и ни к чему не обязывает.
+            Оплата - после первого урока. Диагностика бесплатна.
           </p>
         </section>
 
         {/* ── ВОПРОСЫ ────────────────────────────────────────────── */}
-        <section id="faq" className="px-23 pb-96 sm:px-34 lg:px-63" aria-labelledby="faq-title">
+        <section
+          id="faq"
+          className="px-23 pb-96 sm:px-34 lg:px-63"
+          aria-labelledby="faq-title"
+        >
           <motion.div {...reveal}>
             <SectionIntro
               titleId="faq-title"
               eyebrow="ВОПРОСЫ"
               title="Частые вопросы"
-              copy="Если чего-то здесь нет — просто спросите, отвечу честно."
+              copy="Если чего-то здесь нет - просто спросите, отвечу честно."
             />
           </motion.div>
 
@@ -964,22 +1360,28 @@ function App() {
           className="px-23 pb-96 sm:px-34 lg:px-63"
           aria-labelledby="contact-title"
         >
-          <motion.div className="grid gap-63 lg:grid-cols-[0.8fr_1fr] lg:gap-96" {...reveal}>
+          <motion.div
+            className="grid gap-63 lg:grid-cols-[0.8fr_1fr] lg:gap-96"
+            {...reveal}
+          >
             <div>
               <p className="micro-label text-ash">ЗАПИСЬ</p>
               <h2
                 id="contact-title"
                 className="display mt-23 max-w-[420px] text-[24px] leading-[1.28] tracking-[0.05em] lg:text-h2 lg:leading-h2"
               >
-                Начнём с бесплатной диагностики
+                Начнём с бесплатной диагностики?
               </h2>
               <p className="mt-23 max-w-[44ch] text-body leading-body text-obsidian-ink/82">
-                На первой встрече знакомимся с ребёнком, разбираем задание, определяем текущий уровень
-                и выстраиваем план действий. Это бесплатно и ни к чему не обязывает.
+                На первой встрече знакомимся с ребёнком, разбираем задание,
+                определяем текущий уровень и выстраиваем план действий. Это
+                бесплатно.
               </p>
 
               <div className="mt-43">
-                <p className="micro-label mb-18 text-ash">ИЛИ НАПИШИТЕ НАПРЯМУЮ</p>
+                <p className="micro-label mb-18 text-ash">
+                  ИЛИ НАПИШИТЕ НАПРЯМУЮ
+                </p>
                 {/* TODO: заменить на реальные ссылки — см. ДАННЫЕ-ОТ-УЛЬЯНЫ.md */}
                 <div className="flex flex-wrap gap-11">
                   <a
@@ -1024,9 +1426,13 @@ function App() {
               >
                 <motion.span
                   className={`h-8 w-8 rounded-full ${
-                    isActive ? "bg-sage-dark" : "border border-sage bg-transparent"
+                    isActive
+                      ? "bg-sage-dark"
+                      : "border border-sage bg-transparent"
                   }`}
-                  animate={{ scale: isActive && !shouldReduceMotion ? 1.18 : 1 }}
+                  animate={{
+                    scale: isActive && !shouldReduceMotion ? 1.18 : 1,
+                  }}
                   transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                   aria-hidden="true"
                 />
@@ -1042,6 +1448,11 @@ function App() {
           © {new Date().getFullYear()} УЛЬЯНА / МАТЕМАТИКА
         </p>
       </footer>
+
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+      />
     </div>
   );
 }
