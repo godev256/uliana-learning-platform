@@ -51,24 +51,12 @@ const CONSENT_DOCUMENT = {
   },
 };
 
-/**
- * Секция отзывов скрыта на публичном сайте.
- *
- * Тексты в массиве `reviews` ниже написаны при разработке, а не учениками: имена и результаты
- * («3 → 5», «выросла на 21 балл») выдуманы. Публиковать их как настоящие отзывы нельзя —
- * родители принимают по ним решение о деньгах и о ребёнке.
- *
- * Возвращаем в true, когда Ульяна пришлёт реальные отзывы с согласием на публикацию
- * (см. ДАННЫЕ-ОТ-УЛЬЯНЫ.md, блокер №3).
- */
-const SHOW_REVIEWS = false;
-
 const navItems = [
   { id: "start", label: "СТАРТ" },
   { id: "about", label: "ОБО МНЕ" },
   { id: "method", label: "МЕТОД" },
   { id: "format", label: "ФОРМАТ" },
-  ...(SHOW_REVIEWS ? [{ id: "reviews", label: "ОТЗЫВЫ" }] : []),
+  { id: "reviews", label: "ОТЗЫВЫ" },
   { id: "pricing", label: "ТАРИФЫ" },
   { id: "faq", label: "ВОПРОСЫ" },
   { id: "contact", label: "ЗАПИСЬ" },
@@ -160,45 +148,96 @@ const formatCards = [
 ];
 
 /**
- * ЗАГЛУШКИ. Тексты написаны нами, не учениками.
- * Заменить на реальные отзывы до публикации сайта — см. ДАННЫЕ-ОТ-УЛЬЯНЫ.md.
+ * Настоящие отзывы — только скриншотами, без пересказа: текст отзыва не переписываем.
+ * Содержание скриншота дублирует alt — иначе отзыв не существует для скринридера
+ * и для поиска.
+ *
+ * Исходники — в reviews/, адаптивные версии генерирует npm run build:images
+ * в public/reviews/. Публиковать отзыв можно только с согласия автора.
  */
 const reviews = [
   {
-    name: "Мария",
-    meta: "ОГЭ · 9 класс",
-    result: "3 → 5",
-    text: "Пришла с постоянными ошибками во второй части. Ульяна разложила темы по шагам, и стало понятно, что именно тренировать дома. На пробниках появился спокойный темп и меньше случайных ошибок.",
+    id: "otzyv-1",
+    meta: "ОГЭ · 9 КЛАСС",
+    // shots[0] — превью в секции. Остальные открываются под ним в модалке:
+    // это части одного отзыва, отдельными карточками они не живут.
+    shots: [
+      {
+        name: "otzyv-1-chat",
+        widths: [640, 1066],
+        width: 1066,
+        height: 1409,
+        alt: "Скриншот сообщения ученицы: «очень хочу поблагодарить Ульяну за подготовку к ОГЭ и заслуженную 5. мы начали заниматься в августе, за 10 месяцев до экзамена. пришла я с огромными пробелами в знаниях и стойкой нелюбовью к математике. в процессе мы все таки подружились, уроки стали проходить активно и комфортно, а страх предмета исчез. благодаря классным схемам и большому количеству практики всё разложилось по полочкам. результат — 25 баллов. но главный плюс даже не в оценке, а в том, что я смогла полюбить математику»",
+      },
+      {
+        name: "otzyv-1-result",
+        widths: [640, 1206],
+        width: 1206,
+        height: 511,
+        // Не продолжение переписки, а другой документ — отделяем подписью.
+        label: "РЕЗУЛЬТАТ ЭКЗАМЕНА",
+        alt: "Скриншот результата ОГЭ: первичный балл 25, отметка 5",
+      },
+    ],
   },
   {
-    name: "София",
-    meta: "ЕГЭ, профиль · 11 класс",
-    result: "выросла на 21 балл",
-    text: "Больше всего помогло, что на уроках не просто давали формулы, а учили видеть логику задачи. Я стала увереннее объяснять ход решения и перестала теряться в новых номерах.",
+    id: "otzyv-2",
+    meta: "ШКОЛЬНАЯ ПРОГРАММА · 8 КЛАСС",
+    shots: [
+      {
+        name: "otzyv-2-chat-1",
+        widths: [640, 977],
+        width: 977,
+        height: 1773,
+        alt: "Скриншот сообщения ученицы: «Здравствуйте. Мне стала легче даваться алгебра и геометрия. Раньше я очень нервничала перед каждым уроком в школе, потому что не понимала эти предметы, боялась разных работ, но сейчас у меня уверено получается решать задачи, и даже если появляется что-то новое, я знаю что смогу разобраться в этом. Я очень рада, что занимаюсь в такой комфортной обстановке, на уроке мы разбираем все мои пробелы и вопросы, все объясняли спокойно и намного понятней чем в школе. Домашнее задание я стала решать намного быстрее. В седьмом классе я не понимала геометрию полностью, она была самой сложной, но с началом наших занятий в восьмом классе геометрия для меня стала совсем другим предметом, понятным и интересным»",
+      },
+      {
+        name: "otzyv-2-chat-2",
+        widths: [640, 968],
+        width: 968,
+        height: 1024,
+        alt: "Продолжение сообщения: «Я закончила год без троек, контрольные работы и самостоятельные пишу на 4-5, больше не переживаю выходить к доске, впр написала на 4, и не ходила на пересдачи, как это делали большинство из класса. Мне очень нравится заниматься с вами, вы очень хорошо и спокойно объясняете все темы, домашние задания были не такие большие, вы часто меня поддерживали если что то не получалось, я уже очень скучаю по нашим занятиям»",
+      },
+    ],
   },
   {
-    name: "Алина",
-    meta: "Школьная база · 8 класс",
-    result: "3 → 4",
-    text: "После нескольких занятий ушёл страх перед контрольными. Домашние задания были короткими и точными, поэтому я понимала, зачем делаю каждое упражнение и где у меня слабое место.",
+    id: "otzyv-3",
+    meta: "ОГЭ · 9 КЛАСС",
+    shots: [
+      {
+        name: "otzyv-3-chat",
+        widths: [640, 923],
+        width: 923,
+        height: 369,
+        alt: "Скриншот сообщения ученицы: «Пришли результаты! У меня 4. В первые 5 заданиях были участки:) Я довольна, спасибо вам большое за подготовку»",
+      },
+    ],
   },
   {
-    name: "Ольга",
-    meta: "Мама ученика · 9 класс",
-    result: "ОГЭ на 5",
-    text: "Впервые получаю обратную связь после каждого занятия: что прошли, что задано, где сын проседает. Раньше я узнавала о проблемах из дневника, а теперь понимаю картину заранее.",
+    id: "otzyv-4",
+    meta: "ШКОЛЬНАЯ ПРОГРАММА · 7 КЛАСС",
+    shots: [
+      {
+        name: "otzyv-4-chat",
+        widths: [640, 953],
+        width: 953,
+        height: 513,
+        alt: "Скриншот сообщения родителя: «Доброе утро! Ульяна Дмитриевна, выражаю Вам огромную благодарность!!! написала МЦКО на 4, 5, 5. По геометрии вообще 4 из 4! Спасибо Вам огромное!!!»",
+      },
+    ],
   },
   {
-    name: "Полина",
-    meta: "ОГЭ · 9 класс",
-    result: "4 → 5",
-    text: "Диагностика сразу показала пробелы, а дальше был понятный план. Уроки проходили спокойно, с разбором ошибок, и к экзамену я подошла без ощущения хаоса.",
-  },
-  {
-    name: "Екатерина",
-    meta: "Алгебра · 8 класс",
-    result: "3 → 5",
-    text: "Ульяна быстро нашла, где не хватает базы, и объяснила материал нормальным языком. Оценки стали стабильнее, а главное - ребёнок начал решать самостоятельно, без угадывания.",
+    id: "otzyv-5",
+    meta: "ШКОЛЬНАЯ ПРОГРАММА · 8 КЛАСС",
+    shots: [
+      {
+        name: "otzyv-5-chat",
+        widths: [640, 1081],
+        width: 1081,
+        height: 875,
+        alt: "Скриншот сообщения родителя: «Ульяна добрый день! Спасибо большое за такой подробный отчет. Я заметила, что практически пропали тройки и двойки - это первое, а второе и что для меня как для мамы важнее - она перестала сильно нервничать в день проверочных и контрольных работ как это было ранее! Вот это для меня показатель, безусловно это ваша заслуга. Благодарю Вас и желаю нам всем далее двигаться в том же направлении!!!»",
+      },
+    ],
   },
 ];
 
@@ -240,7 +279,6 @@ const pricingPlans = [
       "3–4 человека близкого уровня",
       "60 минут занятия на общей доске",
       "разбор задач и вопросов на всех",
-      "800 ₽ с каждого",
     ],
     badge: "ПРИВЕДИ ДРУЗЕЙ",
   },
@@ -278,8 +316,10 @@ const faqItems = [
   },
 ];
 
+// Класс спрашиваем отдельным полем, поэтому в цели его не повторяем:
+// иначе в шаблоне заявки выходит «9 класс, цель: ОГЭ, 9 класс».
 const goalOptions = [
-  "ОГЭ, 9 класс",
+  "ОГЭ",
   "ЕГЭ, профиль",
   "ЕГЭ, база",
   "Школьная программа",
@@ -388,20 +428,256 @@ function Card({ children, className = "", ...rest }) {
   );
 }
 
-function ReviewsCarousel({ shouldReduceMotion }) {
-  const [activeReview, setActiveReview] = useState(0);
+/**
+ * Превью-окно шире, чем 1:1. Скриншот считаем высоким, если в него не влезает,
+ * — такой обрезаем снизу, остальные показываем целиком.
+ */
+function isTallShot(shot) {
+  return shot.height / shot.width > 1;
+}
 
-  const visibleReviews = Array.from({ length: 3 }, (_, offset) => {
-    const reviewIndex = (activeReview + offset) % reviews.length;
-    return { ...reviews[reviewIndex], reviewIndex };
-  });
+function shotSrcSet(shot, extension) {
+  return shot.widths
+    .map((width) => `/reviews/${shot.name}-${width}.${extension} ${width}w`)
+    .join(", ");
+}
 
-  const goToPrevious = () =>
-    setActiveReview(
-      (current) => (current - 1 + reviews.length) % reviews.length,
-    );
-  const goToNext = () =>
-    setActiveReview((current) => (current + 1) % reviews.length);
+function ShotPicture({ shot, sizes, className, loading = "lazy" }) {
+  return (
+    <picture className="block w-full">
+      <source
+        type="image/avif"
+        srcSet={shotSrcSet(shot, "avif")}
+        sizes={sizes}
+      />
+      <source
+        type="image/webp"
+        srcSet={shotSrcSet(shot, "webp")}
+        sizes={sizes}
+      />
+      <img
+        src={`/reviews/${shot.name}-${shot.widths[0]}.jpg`}
+        srcSet={shotSrcSet(shot, "jpg")}
+        sizes={sizes}
+        width={shot.width}
+        height={shot.height}
+        loading={loading}
+        decoding="async"
+        alt={shot.alt}
+        className={className}
+      />
+    </picture>
+  );
+}
+
+/**
+ * Отзыв целиком: первый скриншот в читаемом размере, под ним — остальные части.
+ * Продолжение переписки идёт встык, документ другого рода (результат экзамена) —
+ * через разделитель с подписью.
+ */
+function ReviewLightbox({ review, onClose }) {
+  useEffect(() => {
+    if (!review) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [review, onClose]);
+
+  if (!review) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-obsidian-ink/80 px-23 py-34"
+      role="presentation"
+      onClick={onClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Отзыв: ${review.meta}`}
+        className="w-full max-w-[560px] rounded-[8px] bg-bone p-14 sm:p-18"
+        onClick={(event) => event.stopPropagation()}
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="mb-18 flex items-center justify-between gap-18 pl-9">
+          <p className="micro-label text-clay">{review.meta}</p>
+          <button
+            type="button"
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-sage/40 text-body leading-none text-sage-dark transition-colors hover:bg-mist"
+            onClick={onClose}
+            aria-label="Закрыть"
+            autoFocus
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="grid gap-14">
+          {review.shots.map((shot) =>
+            shot.label ? (
+              <div
+                className="mt-9 border-t border-sage/25 pt-23"
+                key={shot.name}
+              >
+                <p className="micro-label mb-14 pl-9 text-ash">{shot.label}</p>
+                <ShotPicture
+                  shot={shot}
+                  sizes="(min-width: 600px) 524px, 84vw"
+                  className="w-full rounded-[4px]"
+                  loading="eager"
+                />
+              </div>
+            ) : (
+              <ShotPicture
+                key={shot.name}
+                shot={shot}
+                sizes="(min-width: 600px) 524px, 84vw"
+                className="w-full rounded-[4px]"
+                loading="eager"
+              />
+            ),
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function ReviewCard({ review, onOpen, isActive = true, isClone = false }) {
+  return (
+    <button
+      type="button"
+      className="group flex h-full w-full flex-col rounded-[8px] border border-sage/25 bg-bone p-18 text-left transition-colors hover:border-sage-dark sm:p-23"
+      onClick={() => onOpen(review)}
+      // Копии ленты не должны попадаться при табуляции: тот же отзыв уже есть в середине.
+      tabIndex={isClone ? -1 : undefined}
+      data-review-card
+      data-review-active={isActive ? "true" : undefined}
+    >
+      <span className="micro-label mb-18 flex w-full items-center justify-between gap-14 text-clay">
+        {review.meta}
+        <span className="flex shrink-0 items-center gap-9 whitespace-nowrap text-sage-dark">
+          ОТКРЫТЬ
+          <span
+            aria-hidden="true"
+            className="transition-transform group-hover:translate-x-4"
+          >
+            →
+          </span>
+        </span>
+      </span>
+
+      {/* Скриншоты разной высоты. Превью режем по одной высоте, чтобы карточки
+          в сетке были одинаковыми, а полный текст открываем в модалке.
+          Широкие скриншоты вписываем целиком: cover обрезал бы их по бокам,
+          то есть по буквам. */}
+      {/* Одна высота нужна в сетке: в одну колонку карточки всё равно идут
+          друг под другом, и фиксированная высота там только добавляет пустоту
+          вокруг широких скриншотов. */}
+      <span
+        className={`relative block max-h-[420px] w-full overflow-hidden rounded-[4px] sm:flex sm:h-[340px] sm:max-h-none ${
+          isTallShot(review.shots[0]) ? "sm:items-start" : "sm:items-center"
+        }`}
+      >
+        <ShotPicture
+          shot={review.shots[0]}
+          sizes="(min-width: 1024px) 30vw, (min-width: 640px) 44vw, 82vw"
+          className="w-full"
+        />
+        {isTallShot(review.shots[0]) ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-63 bg-gradient-to-t from-bone via-bone/70 to-transparent"
+          />
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
+/** Сколько карточек помещается в ряд — от этого зависит, какая из них центральная. */
+function useVisibleCount() {
+  const [visibleCount, setVisibleCount] = useState(1);
+
+  useEffect(() => {
+    if (!window.matchMedia) {
+      return undefined;
+    }
+
+    const breakpoints = [
+      { media: window.matchMedia("(min-width: 1024px)"), count: 3 },
+      { media: window.matchMedia("(min-width: 640px)"), count: 2 },
+    ];
+
+    const sync = () =>
+      setVisibleCount(
+        breakpoints.find(({ media }) => media.matches)?.count ?? 1,
+      );
+
+    sync();
+    breakpoints.forEach(({ media }) => media.addEventListener("change", sync));
+
+    return () =>
+      breakpoints.forEach(({ media }) =>
+        media.removeEventListener("change", sync),
+      );
+  }, []);
+
+  return visibleCount;
+}
+
+/**
+ * Бесконечная карусель: лента едет на одну карточку, а не пересобирается заново.
+ *
+ * Отзывы отрисованы трижды подряд, работаем в средней копии — доехав до её края,
+ * мгновенно (без анимации) перескакиваем на такую же карточку в середине.
+ * Для зрителя это выглядит как лента без конца и начала.
+ */
+function ReviewsCarousel({ shouldReduceMotion, onOpen }) {
+  const total = reviews.length;
+  const items = useMemo(() => [...reviews, ...reviews, ...reviews], []);
+  const visibleCount = useVisibleCount();
+
+  // Позиция центральной карточки в ленте из трёх копий.
+  const [center, setCenter] = useState(total);
+  const [isInstant, setIsInstant] = useState(false);
+
+  const centerOffset = visibleCount === 3 ? 1 : 0;
+  const activeReview = center % total;
+  const step = 100 / items.length;
+
+  const move = (delta) => {
+    setIsInstant(false);
+    setCenter((current) => current + delta);
+  };
+
+  const goToReview = (index) => {
+    setIsInstant(false);
+    setCenter(total + index);
+  };
+
+  // Возврат в среднюю копию — только после того, как анимация доехала.
+  const normalize = () => {
+    if (center >= total * 2) {
+      setIsInstant(true);
+      setCenter(center - total);
+    } else if (center < total) {
+      setIsInstant(true);
+      setCenter(center + total);
+    }
+  };
 
   return (
     <div className="mt-63">
@@ -410,7 +686,7 @@ function ReviewsCarousel({ shouldReduceMotion }) {
           <button
             type="button"
             className="flex h-[50px] w-[50px] items-center justify-center rounded-full border border-sage-dark bg-transparent text-body leading-none text-sage-dark transition-colors hover:bg-mist"
-            onClick={goToPrevious}
+            onClick={() => move(-1)}
             aria-label="Предыдущий отзыв"
             data-review-prev
           >
@@ -419,7 +695,7 @@ function ReviewsCarousel({ shouldReduceMotion }) {
           <button
             type="button"
             className="flex h-[50px] w-[50px] items-center justify-center rounded-full border border-sage-dark bg-sage-dark text-body leading-none text-bone transition-colors hover:bg-obsidian-ink"
-            onClick={goToNext}
+            onClick={() => move(1)}
             aria-label="Следующий отзыв"
             data-review-next
           >
@@ -429,49 +705,54 @@ function ReviewsCarousel({ shouldReduceMotion }) {
       </div>
 
       <p className="sr-only" aria-live="polite">
-        Отзыв {activeReview + 1} из {reviews.length}
+        Отзыв {activeReview + 1} из {total}
       </p>
 
-      <motion.div
-        key={activeReview}
-        className="grid gap-18 md:grid-cols-3"
-        initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-        animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-        transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
-      >
-        {visibleReviews.map((review, position) => (
-          <figure
-            key={`${review.name}-${review.reviewIndex}`}
-            className={`m-0 flex flex-col rounded-[8px] border border-sage/25 bg-bone p-28 ${
-              position > 0 ? "hidden md:flex" : ""
-            }`}
-            data-review-card
-          >
-            <div className="flex items-center gap-18">
-              <span
-                className="display flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-full border border-sage/35 text-h3 leading-none text-sage-dark"
-                aria-hidden="true"
+      {/* py-9: центральная карточка чуть крупнее соседних, ей нужен запас по краям. */}
+      <div className="overflow-hidden py-9">
+        <motion.div
+          className="flex"
+          style={{ width: `${(items.length * 100) / visibleCount}%` }}
+          animate={{ x: `-${(center - centerOffset) * step}%` }}
+          transition={
+            isInstant || shouldReduceMotion
+              ? { duration: 0 }
+              : { duration: 0.55, ease: [0.16, 1, 0.3, 1] }
+          }
+          onAnimationComplete={normalize}
+        >
+          {items.map((review, itemIndex) => {
+            const isCenter = itemIndex === center;
+            const isClone = itemIndex < total || itemIndex >= total * 2;
+
+            return (
+              <motion.div
+                key={`${review.id}-${itemIndex}`}
+                className="shrink-0 px-9"
+                style={{ flexBasis: `${step}%` }}
+                animate={{
+                  scale: isCenter ? 1 : 0.94,
+                  opacity: isCenter ? 1 : 0.72,
+                }}
+                transition={
+                  shouldReduceMotion
+                    ? { duration: 0 }
+                    : { duration: 0.55, ease: [0.16, 1, 0.3, 1] }
+                }
+                // Копии тех же отзывов скринридеру не нужны.
+                aria-hidden={isClone ? "true" : undefined}
               >
-                {review.name[0]}
-              </span>
-              <figcaption>
-                <p className="display text-label leading-label tracking-label text-obsidian-ink">
-                  {review.name}
-                </p>
-                <p className="mt-9 text-body-sm leading-none text-pebble">
-                  {review.meta}
-                </p>
-              </figcaption>
-            </div>
-
-            <p className="micro-label mt-23 text-clay">{review.result}</p>
-
-            <blockquote className="m-0 mt-23 border-0 p-0 text-body-sm leading-body-sm text-obsidian-ink/82">
-              {review.text}
-            </blockquote>
-          </figure>
-        ))}
-      </motion.div>
+                <ReviewCard
+                  review={review}
+                  onOpen={onOpen}
+                  isActive={isCenter}
+                  isClone={isClone}
+                />
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
 
       <div
         className="mt-34 flex justify-center"
@@ -479,10 +760,10 @@ function ReviewsCarousel({ shouldReduceMotion }) {
       >
         {reviews.map((review, index) => (
           <button
-            key={review.name}
+            key={review.id}
             type="button"
             className="flex h-[44px] w-[24px] items-center justify-center"
-            onClick={() => setActiveReview(index)}
+            onClick={() => goToReview(index)}
             aria-label={`Показать отзыв ${index + 1}`}
             aria-current={index === activeReview ? "true" : undefined}
           >
@@ -581,43 +862,292 @@ function ConsentModal({ isOpen, onClose }) {
   );
 }
 
+/**
+ * Заявка уходит в чат текстом, а не в базу: если имя или контакт кривые, Ульяна
+ * просто не сможет ответить. Поэтому проверяем оба поля до открытия мессенджера.
+ */
+const leadValidators = {
+  name(value) {
+    const name = value.trim();
+
+    if (name.length < 3) {
+      return "Имя должно быть не короче трёх символов.";
+    }
+
+    // Алфавит не ограничиваем — важно лишь, чтобы это не был набор цифр и знаков.
+    if (!/\p{L}/u.test(name)) {
+      return "В имени должна быть хотя бы одна буква.";
+    }
+
+    return null;
+  },
+
+  contact(value) {
+    const contact = value.trim();
+
+    if (contact.startsWith("@")) {
+      return /^@[a-zA-Z0-9_]{4,32}$/.test(contact)
+        ? null
+        : "Ник в телеграме: @ и минимум 4 символа - латиница, цифры или _.";
+    }
+
+    // Телефон принимаем в любом виде записи: +7 (900) 000-00-00, 8 900 000 00 00.
+    const digits = contact.replace(/[\s()\-‑–—.]/g, "");
+
+    if (/^(\+7|7|8)\d{10}$/.test(digits)) {
+      return null;
+    }
+
+    return "Телефон в формате +7 900 000-00-00 или ник в телеграме через @.";
+  },
+};
+
+function validateLead(lead) {
+  const errors = {};
+
+  for (const [field, validate] of Object.entries(leadValidators)) {
+    const error = validate(lead[field] ?? "");
+
+    if (error) {
+      errors[field] = error;
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Шаблон заявки: человек не пишет сообщение сам, а получает его готовым из полей формы.
+ */
+function buildBookingMessage(lead) {
+  return `Добрый день, Ульяна! Меня зовут ${lead.name}, хочу записаться на бесплатную диагностику. Мой контакт: ${lead.contact} (${lead.grade}, цель: ${lead.goal}).`;
+}
+
+/** Старый способ — для случаев, когда Clipboard API недоступен (не-https, старые браузеры). */
+function copyWithSelection(text) {
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  area.style.position = "fixed";
+  area.style.top = "0";
+  area.style.opacity = "0";
+  document.body.append(area);
+  area.select();
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    area.remove();
+  }
+}
+
+function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard
+      .writeText(text)
+      .then(() => true)
+      .catch(() => copyWithSelection(text));
+  }
+
+  return Promise.resolve(copyWithSelection(text));
+}
+
+/**
+ * Выбор мессенджера с готовым текстом заявки.
+ *
+ * Ни Telegram, ни ВКонтакте не умеют подставлять текст в личный чат по ссылке:
+ * `?text=` работает только в share-диалоге и у ботов. Поэтому текст копируем
+ * в буфер обмена и показываем целиком — остаётся вставить его в чат.
+ */
+function BookingChannelModal({ lead, onClose }) {
+  const [copyState, setCopyState] = useState("idle");
+
+  useEffect(() => {
+    if (!lead) {
+      return undefined;
+    }
+
+    setCopyState("idle");
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [lead, onClose]);
+
+  if (!lead) {
+    return null;
+  }
+
+  const message = buildBookingMessage(lead);
+
+  const copyMessage = () =>
+    copyText(message).then((isCopied) =>
+      setCopyState(isCopied ? "copied" : "failed"),
+    );
+
+  const openChannel = (href) => {
+    // Копируем до открытия вкладки: после window.open жест пользователя теряется.
+    copyMessage();
+    window.open(href, "_blank", "noopener,noreferrer");
+  };
+
+  const copyNote = {
+    copied: "Текст заявки скопирован - вставьте его в чат и отправьте.",
+    failed: "Не удалось скопировать - выделите текст выше и скопируйте вручную.",
+    idle: "При переходе текст заявки скопируется - останется вставить его в чат.",
+  }[copyState];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-obsidian-ink/55 px-23 py-34"
+      role="presentation"
+      onClick={onClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="booking-modal-title"
+        className="w-full max-w-[480px] rounded-[8px] border border-sage/25 bg-bone p-34"
+        onClick={(event) => event.stopPropagation()}
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        data-booking-modal
+      >
+        <div className="flex items-start justify-between gap-18">
+          <h2
+            id="booking-modal-title"
+            className="display text-h3 leading-h3 tracking-[0.04em] text-obsidian-ink"
+          >
+            Куда отправить заявку?
+          </h2>
+          <button
+            type="button"
+            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-sage/40 text-body leading-none text-sage-dark transition-colors hover:bg-mist"
+            onClick={onClose}
+            aria-label="Закрыть"
+            autoFocus
+          >
+            ×
+          </button>
+        </div>
+
+        <p className="micro-label mt-28 mb-14 text-ash">ТЕКСТ ЗАЯВКИ</p>
+        <p
+          className="m-0 rounded-[8px] border border-sage/25 bg-canvas p-18 text-body-sm leading-body-sm text-obsidian-ink/82"
+          data-booking-message
+        >
+          {message}
+        </p>
+
+        <div className="mt-23 flex flex-wrap gap-11">
+          <button
+            type="button"
+            className="pill-link pill-link--solid"
+            onClick={() => openChannel(CONTACTS.telegram)}
+          >
+            TELEGRAM <span aria-hidden="true">→</span>
+          </button>
+          <button
+            type="button"
+            className="pill-link"
+            onClick={() => openChannel(CONTACTS.vk)}
+          >
+            ВКОНТАКТЕ <span aria-hidden="true">→</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          className="section-cta mt-23"
+          onClick={copyMessage}
+        >
+          СКОПИРОВАТЬ ТЕКСТ
+          <span aria-hidden="true">⧉</span>
+        </button>
+
+        <p
+          aria-live="polite"
+          className="mt-23 text-body-sm leading-body-sm text-pebble"
+        >
+          {copyNote}
+        </p>
+      </motion.div>
+    </div>
+  );
+}
+
 function BookingForm() {
-  const [status, setStatus] = useState("idle");
+  const [lead, setLead] = useState(null);
+  const [errors, setErrors] = useState({});
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
 
-    const message = [
-      "Заявка на бесплатную диагностику",
-      `Имя: ${data.get("name")}`,
-      `Класс: ${data.get("grade")}`,
-      `Цель: ${data.get("goal")}`,
-      `Контакт: ${data.get("contact")}`,
-    ].join("\n");
+    const nextLead = {
+      name: (data.get("name") ?? "").trim(),
+      contact: (data.get("contact") ?? "").trim(),
+      grade: data.get("grade"),
+      goal: data.get("goal"),
+    };
 
-    if (!CONTACTS.ready) {
-      // TODO: как появится рабочий телеграм — выставить CONTACTS.ready = true.
-      console.info(`Заявка собрана, отправка пока не подключена:\n${message}`);
-      setStatus("pending");
+    const nextErrors = validateLead(nextLead);
+    setErrors(nextErrors);
+
+    const firstInvalidField = Object.keys(nextErrors)[0];
+
+    if (firstInvalidField) {
+      form.elements[firstInvalidField]?.focus();
       return;
     }
 
-    window.open(
-      `${CONTACTS.telegram}?text=${encodeURIComponent(message)}`,
-      "_blank",
-      "noopener",
-    );
-    setStatus("sent");
+    setLead(nextLead);
   };
 
-  const note = {
-    pending:
-      "Форма собрана верно. Отправка подключится, когда появится рабочий телеграм.",
-    sent: "Открываю телеграм - останется нажать «Отправить».",
-    idle: "Отвечаю в течение дня.",
-  }[status];
+  // Ошибку снимаем сразу, как только человек начал править поле.
+  const clearError = (field) =>
+    setErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+
+      const { [field]: _removed, ...rest } = current;
+      return rest;
+    });
+
+  const validateField = (field, value) =>
+    setErrors((current) => {
+      const error = leadValidators[field](value.trim());
+
+      if (!error) {
+        const { [field]: _removed, ...rest } = current;
+        return rest;
+      }
+
+      return { ...current, [field]: error };
+    });
+
+  const fieldProps = (field) => ({
+    className: `field-input ${errors[field] ? "field-input--invalid" : ""}`,
+    "aria-invalid": errors[field] ? "true" : undefined,
+    "aria-describedby": errors[field] ? `${field}-error` : undefined,
+    onInput: () => clearError(field),
+    onBlur: (event) => {
+      if (event.target.value.trim()) {
+        validateField(field, event.target.value);
+      }
+    },
+  });
 
   return (
     <>
@@ -628,14 +1158,19 @@ function BookingForm() {
               Как вас зовут
             </label>
             <input
-              className="field-input"
               id="name"
               name="name"
               type="text"
               required
               autoComplete="name"
               placeholder="Имя"
+              {...fieldProps("name")}
             />
+            {errors.name ? (
+              <p className="field-error" id="name-error">
+                {errors.name}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -644,14 +1179,19 @@ function BookingForm() {
               Телефон или телеграм
             </label>
             <input
-              className="field-input"
               id="lead-contact"
               name="contact"
               type="text"
               required
               autoComplete="tel"
               placeholder="+7 900 000-00-00 или @nickname"
+              {...fieldProps("contact")}
             />
+            {errors.contact ? (
+              <p className="field-error" id="contact-error">
+                {errors.contact}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -725,11 +1265,9 @@ function BookingForm() {
             <span aria-hidden="true">→</span>
           </button>
 
-          <p
-            aria-live="polite"
-            className="text-body-sm leading-body-sm text-pebble"
-          >
-            {note}
+          <p className="text-body-sm leading-body-sm text-pebble">
+            После заполнения выберете, куда написать: Telegram или ВКонтакте.
+            Отвечаю в течение дня.
           </p>
         </div>
       </form>
@@ -738,6 +1276,8 @@ function BookingForm() {
         isOpen={isConsentModalOpen}
         onClose={() => setIsConsentModalOpen(false)}
       />
+
+      <BookingChannelModal lead={lead} onClose={() => setLead(null)} />
     </>
   );
 }
@@ -905,6 +1445,7 @@ function App() {
   );
   const reveal = getMotion(shouldReduceMotion);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [activeReview, setActiveReview] = useState(null);
 
   return (
     <div className="min-h-screen bg-canvas text-obsidian-ink">
@@ -1186,26 +1727,27 @@ function App() {
           <SectionCta />
         </section>
 
-        {/* ── ОТЗЫВЫ ─── скрыто до появления настоящих, см. SHOW_REVIEWS ─── */}
-        {SHOW_REVIEWS ? (
-          <section
-            id="reviews"
-            className="px-23 pb-96 sm:px-34 lg:px-63"
-            aria-labelledby="reviews-title"
-          >
-            <motion.div {...reveal}>
-              <SectionIntro
-                titleId="reviews-title"
-                eyebrow="ОТЗЫВЫ"
-                title="Что говорят ученики и родители"
-                copy="Разные стартовые ситуации: подготовка к экзамену, восстановление базы и спокойная работа с ошибками."
-              />
-            </motion.div>
+        {/* ── ОТЗЫВЫ ─────────────────────────────────────────────── */}
+        <section
+          id="reviews"
+          className="px-23 pb-96 sm:px-34 lg:px-63"
+          aria-labelledby="reviews-title"
+        >
+          <motion.div {...reveal}>
+            <SectionIntro
+              titleId="reviews-title"
+              eyebrow="УЧЕНИКИ"
+              title="Отзывы и результаты"
+            />
+          </motion.div>
 
-            <ReviewsCarousel shouldReduceMotion={shouldReduceMotion} />
-            <SectionCta />
-          </section>
-        ) : null}
+          <ReviewsCarousel
+            shouldReduceMotion={shouldReduceMotion}
+            onOpen={setActiveReview}
+          />
+
+          <SectionCta />
+        </section>
 
         {/* ── ТАРИФЫ ─────────────────────────────────────────────── */}
         <section
@@ -1377,31 +1919,6 @@ function App() {
                 определяем текущий уровень и выстраиваем план действий. Это
                 бесплатно.
               </p>
-
-              <div className="mt-43">
-                <p className="micro-label mb-18 text-ash">
-                  ИЛИ НАПИШИТЕ НАПРЯМУЮ
-                </p>
-                {/* TODO: заменить на реальные ссылки — см. ДАННЫЕ-ОТ-УЛЬЯНЫ.md */}
-                <div className="flex flex-wrap gap-11">
-                  <a
-                    className="pill-link"
-                    href={CONTACTS.telegram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    TELEGRAM
-                  </a>
-                  <a
-                    className="pill-link"
-                    href={CONTACTS.vk}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    ВКОНТАКТЕ
-                  </a>
-                </div>
-              </div>
             </div>
 
             <BookingForm />
@@ -1452,6 +1969,11 @@ function App() {
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
+      />
+
+      <ReviewLightbox
+        review={activeReview}
+        onClose={() => setActiveReview(null)}
       />
     </div>
   );

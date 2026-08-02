@@ -73,49 +73,142 @@ async function inspectReviews(page) {
     const card = document.querySelector("[data-review-card]");
     return Boolean(card?.innerText?.trim());
   });
-
-  const readState = async () =>
-    page.evaluate(() => {
-      const cards = [...document.querySelectorAll("[data-review-card]")];
-      const visibleCards = cards.filter((card) => {
-        const styles = window.getComputedStyle(card);
-        const rect = card.getBoundingClientRect();
-        return styles.display !== "none" && rect.width > 0 && rect.height > 0;
-      });
-
-      return {
-        cardCount: cards.length,
-        visibleCount: visibleCards.length,
-        firstVisibleText: visibleCards[0]?.innerText ?? "",
-      };
-    });
-
-  const initial = await readState();
-  await page.locator("[data-review-next]").click();
-  await page.waitForFunction(
-    (firstText) => {
-      const card = document.querySelector("[data-review-card]");
-      return Boolean(card?.innerText?.trim()) && card.innerText !== firstText;
-    },
-    initial.firstVisibleText,
-  );
-  const afterNext = await readState();
-  await page.locator("[data-review-prev]").click();
-  await page.waitForFunction(
-    (firstText) => {
-      const card = document.querySelector("[data-review-card]");
-      return card?.innerText === firstText;
-    },
-    initial.firstVisibleText,
-  );
-  const afterPrevious = await readState();
   await page.waitForTimeout(450);
+
+  const cards = page.locator("[data-review-card]");
+  const cardCount = await cards.count();
+
+  // Скриншоты должны реально грузиться: битый путь даёт naturalWidth 0.
+  const readBrokenImages = (selector) =>
+    page.evaluate(
+      (scope) =>
+        [...document.querySelectorAll(`${scope} img`)]
+          .filter((img) => !img.complete || img.naturalWidth === 0)
+          .map((img) => img.currentSrc || img.src),
+      selector,
+    );
+
+  const brokenCardImages = await readBrokenImages("[data-review-active]");
 
   await page.locator("#reviews").screenshot({
     path: `${screenshotsDir}/reviews.png`,
   });
 
-  return { initial, afterNext, afterPrevious };
+  // Карусель зациклена: пройдя все отзывы вперёд, возвращаемся к первому.
+  // Сравниваем по скриншоту, а не по подписи: подписи у отзывов повторяются.
+  const readFirstShot = () =>
+    page.locator("[data-review-active] img").first().getAttribute("src");
+  const firstShot = await readFirstShot();
+  const shotSequence = [firstShot];
+
+  for (let step = 0; step < 5; step += 1) {
+    await page.locator("[data-review-next]").click();
+    await page.waitForTimeout(200);
+    shotSequence.push(await readFirstShot());
+  }
+
+  const loopsForward = shotSequence.at(-1) === firstShot;
+
+  await page.locator("[data-review-prev]").click();
+  await page.waitForTimeout(200);
+  const goesBackward = (await readFirstShot()) !== firstShot;
+
+  // Возвращаемся к первому отзыву: ниже проверяем именно его — с результатом ОГЭ.
+  await page.getByRole("button", { name: "Показать отзыв 1" }).click();
+  await page.waitForTimeout(250);
+
+  await page.locator("[data-review-active]").click();
+  const lightbox = page.locator('[role="dialog"][aria-modal="true"]');
+  await lightbox.waitFor({ state: "visible" });
+  await page.waitForTimeout(400);
+
+  // В модалке отзыв и результат экзамена идут вместе — иначе результат нечем подтвердить.
+  const lightboxImageCount = await lightbox.locator("img").count();
+  const brokenLightboxImages = await readBrokenImages(
+    '[role="dialog"][aria-modal="true"]',
+  );
+  const lightboxHasResultLabel = (await lightbox.innerText()).includes(
+    "РЕЗУЛЬТАТ ЭКЗАМЕНА",
+  );
+
+  await page.screenshot({ path: `${screenshotsDir}/reviews-lightbox.png` });
+
+  await page.keyboard.press("Escape");
+  await lightbox.waitFor({ state: "detached" });
+  const lightboxClosed = (await lightbox.count()) === 0;
+
+  return {
+    cardCount,
+    loopsForward,
+    goesBackward,
+    uniqueShots: [...new Set(shotSequence)].length,
+    brokenCardImages,
+    lightboxImageCount,
+    brokenLightboxImages,
+    lightboxHasResultLabel,
+    lightboxClosed,
+  };
+}
+
+async function inspectBookingForm(page) {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(url, { waitUntil: "networkidle" });
+  await page.locator("#contact").scrollIntoViewIfNeeded();
+
+  // Сначала заведомо неверные данные: короткое имя и контакт, по которому не ответить.
+  await page.fill("#name", "Ан");
+  await page.fill("#lead-contact", "89001112");
+  await page.selectOption("#grade", "9 класс");
+  await page.selectOption("#goal", "ОГЭ");
+  await page.check('input[name="consent"]');
+  await page.click('button[type="submit"]');
+  await page.waitForTimeout(250);
+
+  const validation = {
+    modalOpenedOnInvalid:
+      (await page.locator("[data-booking-modal]").count()) > 0,
+    errors: await page.locator(".field-error").allInnerTexts(),
+  };
+
+  // Телефон в свободной записи и валидный ник тоже должны проходить.
+  await page.fill("#name", "Анна");
+  await page.fill("#lead-contact", "+7 (900) 000-00-00");
+  await page.click('button[type="submit"]');
+  await page.waitForTimeout(250);
+  const phoneAccepted = (await page.locator("[data-booking-modal]").count()) > 0;
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(250);
+
+  await page.fill("#lead-contact", "@anna");
+  await page.click('button[type="submit"]');
+
+  const modal = page.locator("[data-booking-modal]");
+  await modal.waitFor({ state: "visible" });
+  await page.waitForTimeout(350);
+
+  const message = await page.locator("[data-booking-message]").innerText();
+
+  // Копирование — единственный способ донести шаблон до чата, проверяем, что оно работает.
+  await modal.getByRole("button", { name: /СКОПИРОВАТЬ ТЕКСТ/ }).click();
+  await page.waitForTimeout(300);
+  const copyNote = await modal.locator('[aria-live="polite"]').innerText();
+  const channelLabels = await modal
+    .locator("button.pill-link")
+    .allInnerTexts();
+
+  await page.screenshot({ path: `${screenshotsDir}/booking-modal.png` });
+
+  await page.keyboard.press("Escape");
+  await modal.waitFor({ state: "detached" });
+
+  return {
+    validation,
+    phoneAccepted,
+    message,
+    copyNote,
+    channelLabels: channelLabels.map((label) => label.trim()),
+    closedOnEscape: (await modal.count()) === 0,
+  };
 }
 
 const consoleMessages = [];
@@ -145,6 +238,7 @@ const desktop = await inspectPage(page, { width: 1440, height: 1000 });
 const wide = await inspectPage(page, { width: 2048, height: 850 });
 const mobile = await inspectPage(page, { width: 390, height: 900 });
 const reviews = await inspectReviews(page);
+const booking = await inspectBookingForm(page);
 
 await browser.close();
 
@@ -157,8 +251,8 @@ for (const result of [desktop, wide, mobile]) {
     );
   }
 
-  if (result.cardCount !== 5) {
-    failures.push(`Expected 5 method cards, got ${result.cardCount}`);
+  if (result.cardCount !== 6) {
+    failures.push(`Expected 6 method cards, got ${result.cardCount}`);
   }
 }
 
@@ -175,18 +269,83 @@ if (desktop.aboutToMethodGap !== null && desktop.aboutToMethodGap > 110) {
   failures.push(`About-to-method gap is still large: ${desktop.aboutToMethodGap}px`);
 }
 
-if (reviews.initial.cardCount !== 3 || reviews.initial.visibleCount !== 3) {
+if (reviews.cardCount < 1) {
+  failures.push("Reviews section renders no review card");
+}
+
+if (reviews.brokenCardImages.length > 0) {
   failures.push(
-    `Expected 3 visible review cards on desktop, got ${reviews.initial.visibleCount}/${reviews.initial.cardCount}`,
+    `Review screenshots failed to load: ${reviews.brokenCardImages.join(", ")}`,
   );
 }
 
-if (reviews.initial.firstVisibleText === reviews.afterNext.firstVisibleText) {
-  failures.push("Review carousel did not advance after clicking next");
+if (!reviews.loopsForward) {
+  failures.push("Review carousel did not loop back to the first review");
 }
 
-if (reviews.initial.firstVisibleText !== reviews.afterPrevious.firstVisibleText) {
-  failures.push("Review carousel did not return after clicking previous");
+if (!reviews.goesBackward) {
+  failures.push("Review carousel did not move back on the previous button");
+}
+
+if (reviews.uniqueShots < 5) {
+  failures.push(
+    `Carousel showed only ${reviews.uniqueShots} distinct reviews while cycling`,
+  );
+}
+
+if (reviews.lightboxImageCount < 2) {
+  failures.push(
+    `Expected message + exam result in the lightbox, got ${reviews.lightboxImageCount} image(s)`,
+  );
+}
+
+if (!reviews.lightboxHasResultLabel) {
+  failures.push("Lightbox is missing the exam result block");
+}
+
+if (reviews.brokenLightboxImages.length > 0) {
+  failures.push(
+    `Lightbox screenshots failed to load: ${reviews.brokenLightboxImages.join(", ")}`,
+  );
+}
+
+if (!reviews.lightboxClosed) {
+  failures.push("Review lightbox did not close on Escape");
+}
+
+// Шаблон заявки должен нести все четыре поля формы — иначе Ульяне нечего сопоставить.
+for (const fragment of ["Анна", "@anna", "9 класс", "ОГЭ"]) {
+  if (!booking.message.includes(fragment)) {
+    failures.push(`Booking message is missing "${fragment}": ${booking.message}`);
+  }
+}
+
+if (booking.channelLabels.length !== 2) {
+  failures.push(
+    `Expected Telegram and VK buttons, got: ${booking.channelLabels.join(", ")}`,
+  );
+}
+
+if (booking.validation.modalOpenedOnInvalid) {
+  failures.push("Booking modal opened with an invalid name and phone");
+}
+
+if (booking.validation.errors.length !== 2) {
+  failures.push(
+    `Expected name and contact errors, got: ${booking.validation.errors.join(" | ")}`,
+  );
+}
+
+if (!booking.phoneAccepted) {
+  failures.push("A valid phone number was rejected");
+}
+
+if (!booking.copyNote.includes("скопирован")) {
+  failures.push(`Copy button did not report success: ${booking.copyNote}`);
+}
+
+if (!booking.closedOnEscape) {
+  failures.push("Booking modal did not close on Escape");
 }
 
 if (consoleMessages.length > 0) {
@@ -204,6 +363,7 @@ const summary = {
   wide,
   mobile,
   reviews,
+  booking,
   consoleMessages,
   pageErrors,
   failures,

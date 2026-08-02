@@ -278,6 +278,20 @@
   outline: none;
 }
 
+/* Ошибка поля: тем же тёплым акцентом, что и лейблы, — не красная тревога. */
+.field-input--invalid,
+.field-input--invalid:hover,
+.field-input--invalid:focus {
+  border-color: #9a5a44;
+}
+
+.field-error {
+  margin: 11px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #9a5a44;
+}
+
 select.field-input {
   appearance: none;
   cursor: pointer;
