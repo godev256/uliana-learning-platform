@@ -100,11 +100,15 @@ async function inspectReviews(page) {
     page.locator("[data-review-active] img").first().getAttribute("src");
   const firstShot = await readFirstShot();
   const shotSequence = [firstShot];
+  const reviewCount = await page
+    .getByRole("button", { name: /^Показать отзыв \d+$/ })
+    .count();
 
-  for (let step = 0; step < 5; step += 1) {
+  for (let step = 0; step < reviewCount; step += 1) {
     await page.locator("[data-review-next]").click();
     await page.waitForTimeout(200);
     shotSequence.push(await readFirstShot());
+    brokenCardImages.push(...await readBrokenImages("[data-review-active]"));
   }
 
   const loopsForward = shotSequence.at(-1) === firstShot;
@@ -113,8 +117,16 @@ async function inspectReviews(page) {
   await page.waitForTimeout(200);
   const goesBackward = (await readFirstShot()) !== firstShot;
 
-  // Возвращаемся к первому отзыву: ниже проверяем именно его — с результатом ОГЭ.
-  await page.getByRole("button", { name: "Показать отзыв 1" }).click();
+  // Проверяем отзыв с результатом ОГЭ независимо от его места в ленте.
+  const examReviewIndex = shotSequence.findIndex((src) =>
+    src?.includes("otzyv-1-chat"),
+  );
+  if (examReviewIndex < 0) {
+    throw new Error("Review with the OGE exam result is missing");
+  }
+  await page
+    .getByRole("button", { name: `Показать отзыв ${examReviewIndex + 1}`, exact: true })
+    .click();
   await page.waitForTimeout(250);
 
   await page.locator("[data-review-active]").click();
@@ -139,6 +151,7 @@ async function inspectReviews(page) {
 
   return {
     cardCount,
+    reviewCount,
     loopsForward,
     goesBackward,
     uniqueShots: [...new Set(shotSequence)].length,
@@ -287,7 +300,7 @@ if (!reviews.goesBackward) {
   failures.push("Review carousel did not move back on the previous button");
 }
 
-if (reviews.uniqueShots < 5) {
+if (reviews.uniqueShots !== reviews.reviewCount) {
   failures.push(
     `Carousel showed only ${reviews.uniqueShots} distinct reviews while cycling`,
   );

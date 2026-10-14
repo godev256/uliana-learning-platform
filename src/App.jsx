@@ -72,7 +72,8 @@ const aboutFacts = [
   {
     label: "ОБРАЗОВАНИЕ",
     title: "МОСКОВСКИЙ АВИАЦИОННЫЙ ИНСТИТУТ",
-    copy: "Информатика и вычислительная техника, бакалавриат 2026 года.",
+    copy: "Информатика и вычислительная техника, бакалавриат.",
+    document: { label: "Просмотреть диплом", href: "/diploma.jpg" },
   },
   {
     label: "ОПЫТ",
@@ -157,6 +158,45 @@ const formatCards = [
  */
 const reviews = [
   {
+    id: "otzyv-5",
+    meta: "ШКОЛЬНАЯ ПРОГРАММА · 8 КЛАСС",
+    shots: [
+      {
+        name: "otzyv-5-chat",
+        widths: [640, 1081],
+        width: 1081,
+        height: 875,
+        alt: "Скриншот сообщения родителя: «Ульяна добрый день! Спасибо большое за такой подробный отчет. Я заметила, что практически пропали тройки и двойки - это первое, а второе и что для меня как для мамы важнее - она перестала сильно нервничать в день проверочных и контрольных работ как это было ранее! Вот это для меня показатель, безусловно это ваша заслуга. Благодарю Вас и желаю нам всем далее двигаться в том же направлении!!!»",
+      },
+    ],
+  },
+  {
+    id: "otzyv-7",
+    meta: "ОГЭ · 9 КЛАСС",
+    shots: [
+      {
+        name: "otzyv-7-chat",
+        widths: [640, 775],
+        width: 775,
+        height: 1280,
+        alt: "Скриншот сообщения ученицы: «После занятий с репетитором, в школе справляться с программой стало намного легче. С геометрией у меня были проблемы с 7 класса, но в этом году я ее сильно подтянула, благодаря занятиям. В добавок я перестала бояться уроков математики, так как с моим репетитором мы успевали проходить все темы наперед. А если по какой то теме в школе у меня возникали проблемы, то мы быстро ее прогоняли и дальше продолжали работать в привычном темпе. Честно говоря, у меня было много репетиторов до Ульяны, но она мне помогла больше всех. Самое главное для меня, что уроки с ней проходили супер комфортно. Я очень ленивая, но когда приходило время наших занятий, то я вообще не ленилась, а напротив была рада. А все потому, что я знала, что после наших занятий есть результат. Подтверждение этому — я сдала ОГЭ на пять) Учитывая, что я учусь в гуманитарном классе и математика мне естественно дается сложнее всего»",
+      },
+    ],
+  },
+  {
+    id: "otzyv-6",
+    meta: "ШКОЛЬНАЯ ПРОГРАММА · МЦКО",
+    shots: [
+      {
+        name: "otzyv-6-chat",
+        widths: [640, 1099],
+        width: 1099,
+        height: 1280,
+        alt: "Скриншот сообщения родителя: «Добрый вечер, Ульяна Дмитриевна! Заметила! Успеваемость и отношение к математике изменилось, оценки стали значительно лучше. Если честно с 3-ки перешли на твердую 4-ку. В каких-то темах, даже на 5! Успешно сдали МЦКО (5 и 4) только благодаря занятиям с Вами. Начали заниматься с середины года, поэтому подстраивались под свободные места. В этом году было бы удобнее, занятия пораньше. Дом занятия и обратная связь всегда — супер!!! Очень нравится заниматься с Вами, комфортно, нет стеснения. Объясняете легко и доступно! Спасибо Вам»",
+      },
+    ],
+  },
+  {
     id: "otzyv-1",
     meta: "ОГЭ · 9 КЛАСС",
     // shots[0] — превью в секции. Остальные открываются под ним в модалке:
@@ -201,19 +241,6 @@ const reviews = [
     ],
   },
   {
-    id: "otzyv-3",
-    meta: "ОГЭ · 9 КЛАСС",
-    shots: [
-      {
-        name: "otzyv-3-chat",
-        widths: [640, 923],
-        width: 923,
-        height: 369,
-        alt: "Скриншот сообщения ученицы: «Пришли результаты! У меня 4. В первые 5 заданиях были участки:) Я довольна, спасибо вам большое за подготовку»",
-      },
-    ],
-  },
-  {
     id: "otzyv-4",
     meta: "ШКОЛЬНАЯ ПРОГРАММА · 7 КЛАСС",
     shots: [
@@ -226,19 +253,6 @@ const reviews = [
       },
     ],
   },
-  {
-    id: "otzyv-5",
-    meta: "ШКОЛЬНАЯ ПРОГРАММА · 8 КЛАСС",
-    shots: [
-      {
-        name: "otzyv-5-chat",
-        widths: [640, 1081],
-        width: 1081,
-        height: 875,
-        alt: "Скриншот сообщения родителя: «Ульяна добрый день! Спасибо большое за такой подробный отчет. Я заметила, что практически пропали тройки и двойки - это первое, а второе и что для меня как для мамы важнее - она перестала сильно нервничать в день проверочных и контрольных работ как это было ранее! Вот это для меня показатель, безусловно это ваша заслуга. Благодарю Вас и желаю нам всем далее двигаться в том же направлении!!!»",
-      },
-    ],
-  },
 ];
 
 const pricingPlans = [
@@ -248,7 +262,7 @@ const pricingPlans = [
     price: "1 600 ₽",
     unit: "за 60 минут",
     description:
-      "Оплата после урока. Подходит, если нужно начать спокойно и без обязательств.",
+      "Оплата после урока.",
     features: [
       "60 минут занятия",
       "разбор текущей темы",
@@ -258,7 +272,7 @@ const pricingPlans = [
   {
     name: "ГРУППА 2 ЧЕЛОВЕКА",
     rhythm: "ЗАНИМАЕТЕСЬ ВДВОЁМ",
-    price: "1 000 ₽",
+    price: "1 100 ₽",
     unit: "с одного человека за 60 минут",
     description:
       "Приведите друга и занимайтесь в паре: та же программа и та же доска, только вдвоём.",
@@ -304,7 +318,7 @@ const faqItems = [
   },
   {
     q: "МОЖНО ЛИ ЗАНИМАТЬСЯ ВДВОЁМ С ДРУГОМ?",
-    a: "Да. Можно заниматься в паре - 1 000 ₽ с человека, или собрать мини-группу из 3–4 человек близкого уровня - 800 ₽ с человека. Программа та же, всё на общей доске. Приведите друзей и учитесь в комфортной компании.",
+    a: "Да. Можно заниматься в паре - 1 100 ₽ с человека, или собрать мини-группу из 3–4 человек близкого уровня - 800 ₽ с человека. Программа та же, всё на общей доске. Приведите друзей и учитесь в комфортной компании.",
   },
   {
     q: "ЧТО, ЕСЛИ МЫ НЕ ПОДОЙДЁМ ДРУГ ДРУГУ?",
@@ -408,7 +422,7 @@ function SectionIntro({ titleId, eyebrow, title, copy }) {
 
 function SectionCta({ children = "ЗАПИСАТЬСЯ НА БЕСПЛАТНУЮ ДИАГНОСТИКУ" }) {
   return (
-    <div className="mt-63">
+    <div className="mt-34 sm:mt-63">
       <a className="section-cta" href="#contact">
         {children}
         <span aria-hidden="true">→</span>
@@ -420,7 +434,7 @@ function SectionCta({ children = "ЗАПИСАТЬСЯ НА БЕСПЛАТНУЮ
 function Card({ children, className = "", ...rest }) {
   return (
     <motion.article
-      className={`rounded-[8px] border border-sage/25 bg-bone p-28 ${className}`}
+      className={`rounded-[8px] border border-sage/25 bg-bone p-23 sm:p-28 ${className}`}
       {...rest}
     >
       {children}
@@ -497,7 +511,7 @@ function ReviewLightbox({ review, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-obsidian-ink/80 px-23 py-34"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-obsidian-ink/80 px-11 py-18 sm:px-23 sm:py-34"
       role="presentation"
       onClick={onClose}
     >
@@ -505,7 +519,7 @@ function ReviewLightbox({ review, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-label={`Отзыв: ${review.meta}`}
-        className="w-full max-w-[560px] rounded-[8px] bg-bone p-14 sm:p-18"
+        className="w-full max-w-[560px] rounded-[8px] bg-bone p-9 sm:p-18"
         onClick={(event) => event.stopPropagation()}
         initial={{ opacity: 0, y: 12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -559,7 +573,7 @@ function ReviewCard({ review, onOpen, isActive = true, isClone = false }) {
   return (
     <button
       type="button"
-      className="group flex h-full w-full flex-col rounded-[8px] border border-sage/25 bg-bone p-18 text-left transition-colors hover:border-sage-dark sm:p-23"
+      className="group flex h-full w-full flex-col rounded-[8px] border border-sage/25 bg-bone p-14 text-left transition-colors hover:border-sage-dark sm:p-23"
       onClick={() => onOpen(review)}
       // Копии ленты не должны попадаться при табуляции: тот же отзыв уже есть в середине.
       tabIndex={isClone ? -1 : undefined}
@@ -587,8 +601,8 @@ function ReviewCard({ review, onOpen, isActive = true, isClone = false }) {
           друг под другом, и фиксированная высота там только добавляет пустоту
           вокруг широких скриншотов. */}
       <span
-        className={`relative block max-h-[420px] w-full overflow-hidden rounded-[4px] sm:flex sm:h-[340px] sm:max-h-none ${
-          isTallShot(review.shots[0]) ? "sm:items-start" : "sm:items-center"
+        className={`relative flex h-[320px] w-full overflow-hidden rounded-[4px] sm:h-[340px] ${
+          isTallShot(review.shots[0]) ? "items-start" : "items-center"
         }`}
       >
         <ShotPicture
@@ -680,7 +694,7 @@ function ReviewsCarousel({ shouldReduceMotion, onOpen }) {
   };
 
   return (
-    <div className="mt-63">
+    <div className="mt-34 sm:mt-63">
       <div className="mb-28 flex justify-end">
         <div className="flex items-center gap-9">
           <button
@@ -1457,11 +1471,11 @@ function App() {
         {/* ── СТАРТ ──────────────────────────────────────────────── */}
         <section
           id="start"
-          className="grid grid-cols-1 lg:min-h-screen lg:grid-cols-2"
+          className="grid grid-cols-1 items-start lg:grid-cols-2"
           aria-labelledby="hero-title"
         >
           <motion.figure
-            className="relative m-0 min-h-[58vh] overflow-hidden bg-sage-dark lg:min-h-screen"
+            className="relative m-0 aspect-square overflow-hidden bg-canvas"
             initial={
               shouldReduceMotion ? false : { clipPath: "inset(0 18% 0 0)" }
             }
@@ -1469,7 +1483,7 @@ function App() {
             transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
           >
             <motion.picture
-              className="block h-full w-full"
+              className="absolute inset-0 block overflow-hidden"
               initial={shouldReduceMotion ? false : { scale: 1.05 }}
               animate={shouldReduceMotion ? {} : { scale: 1 }}
               transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
@@ -1493,12 +1507,12 @@ function App() {
                 fetchPriority="high"
                 decoding="async"
                 alt="Ульяна, репетитор по математике, в белой рубашке у светлой стены"
-                className="h-full min-h-[58vh] w-full object-cover object-[54%_50%] lg:min-h-screen"
+                className="h-full w-full scale-[1.28] object-cover object-center"
               />
             </motion.picture>
           </motion.figure>
 
-          <div className="relative flex min-h-screen flex-col px-23 py-34 sm:px-34 lg:px-63">
+          <div className="relative flex h-full flex-col px-23 py-23 sm:px-34 sm:py-34 lg:px-43 xl:px-63">
             <div className="flex items-start justify-between gap-23">
               <a
                 href="#start"
@@ -1513,7 +1527,7 @@ function App() {
             </div>
 
             <motion.div
-              className="flex flex-1 flex-col items-start justify-center gap-28 py-63 text-left"
+              className="flex flex-1 flex-col items-start justify-center gap-23 py-28 text-left sm:gap-28 sm:py-43"
               initial={shouldReduceMotion ? false : "hidden"}
               animate="visible"
               variants={{
@@ -1523,41 +1537,17 @@ function App() {
                 },
               }}
             >
-              <motion.p
-                className="micro-label text-clay"
-                variants={{
-                  hidden: { opacity: 0, y: 18 },
-                  visible: { opacity: 1, y: 0 },
-                }}
-                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              >
-                БЕСПЛАТНАЯ ДИАГНОСТИКА · ОНЛАЙН
-              </motion.p>
-
               <motion.h1
                 id="hero-title"
-                className="display max-w-[640px] text-[32px] leading-[1.2] tracking-[0.04em] text-obsidian-ink sm:text-[38px] lg:text-h1 lg:leading-h1"
+                className="display max-w-[640px] text-[28px] leading-[1.2] tracking-[0.04em] text-obsidian-ink sm:text-[38px] xl:text-h1 xl:leading-h1"
                 variants={{
                   hidden: { opacity: 0, y: 18 },
                   visible: { opacity: 1, y: 0 },
                 }}
                 transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               >
-                Подготовка к ОГЭ и ЕГЭ
+                Школьная программа, подготовка к ОГЭ и ЕГЭ
               </motion.h1>
-
-              <motion.p
-                className="max-w-[540px] text-lead leading-lead text-obsidian-ink/82"
-                variants={{
-                  hidden: { opacity: 0, y: 18 },
-                  visible: { opacity: 1, y: 0 },
-                }}
-                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              >
-                Начинаем с бесплатной диагностики: нахожу настоящие пробелы и
-                показываю маршрут до экзамена. Занятия - онлайн на интерактивной
-                доске, конспекты остаются у ученика.
-              </motion.p>
 
               <motion.div
                 className="grid gap-14"
@@ -1579,44 +1569,39 @@ function App() {
                     ОПЛАТИТЬ ЗАНЯТИЕ
                   </button>
                 </div>
-                <p className="text-body-sm leading-none text-pebble">
-                  Первая встреча ни к чему не обязывает · оплата - для тех, кто
-                  уже занимается
-                </p>
               </motion.div>
+              <motion.dl
+                className="m-0 grid w-full grid-cols-3 gap-11 border-t border-sage/25 pt-18 sm:gap-18 sm:pt-28"
+                initial={shouldReduceMotion ? false : { opacity: 0 }}
+                animate={shouldReduceMotion ? {} : { opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.75 }}
+              >
+                {heroProof.map((item) => (
+                  <div key={item.label}>
+                    <dt className="sr-only">{item.label}</dt>
+                    <dd className="m-0">
+                      <span className="display block text-[20px] leading-stat sm:text-stat tracking-[0.02em] text-sage-dark">
+                        {item.value}
+                      </span>
+                      <span className="mt-9 block text-[13px] leading-[1.45] sm:text-body-sm text-pebble">
+                        {item.label}
+                      </span>
+                    </dd>
+                  </div>
+                ))}
+              </motion.dl>
             </motion.div>
-
-            <motion.dl
-              className="m-0 grid grid-cols-3 gap-18 border-t border-sage/25 pt-28"
-              initial={shouldReduceMotion ? false : { opacity: 0 }}
-              animate={shouldReduceMotion ? {} : { opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.75 }}
-            >
-              {heroProof.map((item) => (
-                <div key={item.label}>
-                  <dt className="sr-only">{item.label}</dt>
-                  <dd className="m-0">
-                    <span className="display block text-stat leading-stat tracking-[0.02em] text-sage-dark">
-                      {item.value}
-                    </span>
-                    <span className="mt-9 block text-body-sm leading-[1.35] text-pebble">
-                      {item.label}
-                    </span>
-                  </dd>
-                </div>
-              ))}
-            </motion.dl>
           </div>
         </section>
 
         {/* ── ОБО МНЕ ────────────────────────────────────────────── */}
         <section
           id="about"
-          className="px-23 pb-96 pt-144 sm:px-34 lg:px-63"
+          className="px-23 pb-63 sm:pb-96 pt-63 sm:pt-144 sm:px-34 lg:px-63"
           aria-labelledby="about-title"
         >
           <motion.div {...reveal}>
-            <div className="grid gap-63 lg:grid-cols-[0.42fr_1fr] lg:gap-72">
+            <div className="grid gap-34 sm:gap-63 lg:grid-cols-[0.42fr_1fr] lg:gap-72">
               <div>
                 <p className="micro-label text-ash">ОБО МНЕ</p>
                 <h2
@@ -1633,12 +1618,25 @@ function App() {
                     key={fact.label}
                     {...cardMotion(shouldReduceMotion, index)}
                   >
-                    <p className="micro-label mb-34 text-clay">{fact.label}</p>
+                    <p className="micro-label mb-23 sm:mb-34 text-clay">{fact.label}</p>
                     <h3 className="display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
                       {fact.title}
                     </h3>
                     <p className="mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">
                       {fact.copy}
+                      {fact.document && (
+                        <>
+                          {" "}
+                          <a
+                            href={fact.document.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sage-dark underline decoration-sage/50 underline-offset-4 hover:decoration-sage-dark"
+                          >
+                            {fact.document.label}
+                          </a>
+                        </>
+                      )}
                     </p>
                   </Card>
                 ))}
@@ -1650,7 +1648,7 @@ function App() {
         {/* ── МЕТОД ──────────────────────────────────────────────── */}
         <section
           id="method"
-          className="px-23 pb-96 sm:px-34 lg:px-63"
+          className="px-23 pb-63 sm:pb-96 sm:px-34 lg:px-63"
           aria-labelledby="method-title"
         >
           <motion.div {...reveal}>
@@ -1658,11 +1656,10 @@ function App() {
               titleId="method-title"
               eyebrow="МЕТОДИКА"
               title="Дорожная карта от знакомства до экзамена"
-              copy="Ребёнок всегда знает, что мы делаем сейчас и зачем. Родитель - тоже."
             />
           </motion.div>
 
-          <div className="mt-63 grid gap-18 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-34 sm:mt-63 grid gap-18 md:grid-cols-2 xl:grid-cols-3">
             {roadmapSteps.map((step, index) => (
               <Card
                 key={step.number}
@@ -1673,7 +1670,7 @@ function App() {
                   className="absolute inset-x-0 top-0 h-4 bg-sage"
                   aria-hidden="true"
                 />
-                <span className="mb-34 flex items-center gap-18">
+                <span className="mb-23 sm:mb-34 flex items-center gap-18">
                   {/* sage-dark, а не sage: белое на #667f70 даёт 4.34:1 и не проходит AA. */}
                   <span className="display flex h-[38px] w-[38px] items-center justify-center rounded-full bg-sage-dark text-caption leading-caption tracking-caption text-bone">
                     {step.number}
@@ -1696,7 +1693,7 @@ function App() {
         {/* ── ФОРМАТ ─────────────────────────────────────────────── */}
         <section
           id="format"
-          className="px-23 pb-96 sm:px-34 lg:px-63"
+          className="px-23 pb-63 sm:pb-96 sm:px-34 lg:px-63"
           aria-labelledby="format-title"
         >
           <motion.div {...reveal}>
@@ -1704,14 +1701,13 @@ function App() {
               titleId="format-title"
               eyebrow="ФОРМАТ"
               title="Как устроены занятия"
-              copy="Урок устроен так, чтобы ученик понимал, что делаем сейчас, что тренируем дома и как это приближает к цели."
             />
           </motion.div>
 
-          <div className="mt-63 grid gap-18 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-34 sm:mt-63 grid gap-18 md:grid-cols-2 xl:grid-cols-3">
             {formatCards.map((card, index) => (
               <Card key={card.title} {...cardMotion(shouldReduceMotion, index)}>
-                <span className="micro-label mb-34 inline-flex rounded-full border border-clay-light/60 px-14 py-11 text-clay">
+                <span className="micro-label mb-23 sm:mb-34 inline-flex rounded-full border border-clay-light/60 px-14 py-11 text-clay">
                   {card.label}
                 </span>
                 <h3 className="display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
@@ -1730,7 +1726,7 @@ function App() {
         {/* ── ОТЗЫВЫ ─────────────────────────────────────────────── */}
         <section
           id="reviews"
-          className="px-23 pb-96 sm:px-34 lg:px-63"
+          className="px-23 pb-63 sm:pb-96 sm:px-34 lg:px-63"
           aria-labelledby="reviews-title"
         >
           <motion.div {...reveal}>
@@ -1752,7 +1748,7 @@ function App() {
         {/* ── ТАРИФЫ ─────────────────────────────────────────────── */}
         <section
           id="pricing"
-          className="px-23 pb-96 sm:px-34 lg:px-63"
+          className="px-23 pb-63 sm:pb-96 sm:px-34 lg:px-63"
           aria-labelledby="pricing-title"
         >
           <motion.div {...reveal}>
@@ -1760,15 +1756,14 @@ function App() {
               titleId="pricing-title"
               eyebrow="ТАРИФЫ"
               title="Индивидуально или в мини-группе с друзьями"
-              copy="Диагностика бесплатна. Дальше - как удобнее: заниматься один на один или собрать мини-группу из друзей и платить меньше."
             />
           </motion.div>
 
-          <div className="mt-63 grid gap-18 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-34 sm:mt-63 grid gap-18 md:grid-cols-2 lg:grid-cols-3">
             {pricingPlans.map((plan, index) => (
               <motion.article
                 key={plan.name}
-                className={`relative grid content-between rounded-[8px] border p-34 ${
+                className={`relative grid content-between rounded-[8px] border p-23 sm:p-34 ${
                   plan.badge
                     ? "on-dark border-sage-dark bg-sage-dark text-bone"
                     : "border-sage/25 bg-bone text-obsidian-ink"
@@ -1872,7 +1867,7 @@ function App() {
         {/* ── ВОПРОСЫ ────────────────────────────────────────────── */}
         <section
           id="faq"
-          className="px-23 pb-96 sm:px-34 lg:px-63"
+          className="px-23 pb-63 sm:pb-96 sm:px-34 lg:px-63"
           aria-labelledby="faq-title"
         >
           <motion.div {...reveal}>
@@ -1880,11 +1875,10 @@ function App() {
               titleId="faq-title"
               eyebrow="ВОПРОСЫ"
               title="Частые вопросы"
-              copy="Если чего-то здесь нет - просто спросите, отвечу честно."
             />
           </motion.div>
 
-          <motion.div className="mt-63 max-w-[900px]" {...reveal}>
+          <motion.div className="mt-34 sm:mt-63 max-w-[900px]" {...reveal}>
             {faqItems.map((item) => (
               <details className="faq-item" key={item.q}>
                 <summary>{item.q}</summary>
@@ -1899,11 +1893,11 @@ function App() {
         {/* ── ЗАПИСЬ ─────────────────────────────────────────────── */}
         <section
           id="contact"
-          className="px-23 pb-96 sm:px-34 lg:px-63"
+          className="px-23 pb-63 sm:pb-96 sm:px-34 lg:px-63"
           aria-labelledby="contact-title"
         >
           <motion.div
-            className="grid gap-63 lg:grid-cols-[0.8fr_1fr] lg:gap-96"
+            className="grid gap-34 sm:gap-63 lg:grid-cols-[0.8fr_1fr] lg:gap-96"
             {...reveal}
           >
             <div>
@@ -1914,11 +1908,6 @@ function App() {
               >
                 Начнём с бесплатной диагностики?
               </h2>
-              <p className="mt-23 max-w-[44ch] text-body leading-body text-obsidian-ink/82">
-                На первой встрече знакомимся с ребёнком, разбираем задание,
-                определяем текущий уровень и выстраиваем план действий. Это
-                бесплатно.
-              </p>
             </div>
 
             <BookingForm />

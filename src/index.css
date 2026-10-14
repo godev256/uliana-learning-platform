@@ -372,6 +372,10 @@ select.field-input {
   .pill-link {
     width: 100%;
     max-width: 380px;
+    padding: 14px 18px;
+    line-height: 1.35;
+    letter-spacing: 1px;
+    text-align: center;
   }
 }
 

@@ -57,9 +57,10 @@ const reviewShots = [
   { source: "reviews/otzyv-1-result.png", name: "otzyv-1-result", widths: [640, 1206] },
   { source: "reviews/otzyv-2-chat-1.png", name: "otzyv-2-chat-1", widths: [640, 977] },
   { source: "reviews/otzyv-2-chat-2.png", name: "otzyv-2-chat-2", widths: [640, 968] },
-  { source: "reviews/otzyv-3-chat.png", name: "otzyv-3-chat", widths: [640, 923] },
   { source: "reviews/otzyv-4-chat.png", name: "otzyv-4-chat", widths: [640, 953] },
   { source: "reviews/otzyv-5-chat.png", name: "otzyv-5-chat", widths: [640, 1081] },
+  { source: "reviews/otzyv-6-chat.jpg", name: "otzyv-6-chat", widths: [640, 1099] },
+  { source: "reviews/otzyv-7-chat.jpg", name: "otzyv-7-chat", widths: [640, 775] },
 ];
 
 for (const shot of reviewShots) {
