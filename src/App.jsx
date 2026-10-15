@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import SiteMenu from "./components/SiteMenu.jsx";
 
 /**
  * ЗАГЛУШКИ. Заменить на реальные данные — см. ДАННЫЕ-ОТ-УЛЬЯНЫ.md.
@@ -1463,6 +1464,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-canvas text-obsidian-ink">
+      <SiteMenu />
       <a className="skip-link" href="#main-content">
         К основному содержанию
       </a>

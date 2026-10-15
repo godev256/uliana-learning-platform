@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+.site-menu { position: fixed; top: 16px; right: 16px; z-index: 40; }
+.site-menu-toggle { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; width: 44px; height: 44px; background: #fbfaf6; border: 1px solid #cdd8ce; border-radius: 50%; cursor: pointer; }
+.site-menu-toggle span { display: block; width: 18px; height: 1px; background: #2f493f; }
+.site-menu-links { position: absolute; top: 54px; right: 0; min-width: 180px; padding: 8px; background: #fbfaf6; border: 1px solid #cdd8ce; border-radius: 10px; }
+.site-menu-links a { display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 10px 14px; color: #2f493f; text-decoration: none; font-size: 15px; border-radius: 6px; }
+.site-menu-links a:hover { background: #e7eee5; }
+
 @theme {
   --color-obsidian-ink: #212123;
   --color-bone: #ffffff;
