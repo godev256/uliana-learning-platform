@@ -28,6 +28,7 @@ export default function SiteMenu() {
       </button>
       {open && <nav id="site-menu-links" className="site-menu-links" aria-label="Меню сайта">
         <a href="/">Главная</a>
+        <a href="/cabinet">Мой кабинет</a>
         <a href="/board">Доска <span aria-hidden="true">↗</span></a>
       </nav>}
     </div>

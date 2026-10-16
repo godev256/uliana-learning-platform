@@ -23,7 +23,7 @@ export const figureGroups = [
 figureGroups.push({ title: "3D-визуализация фигур", figures: figureGroups[1].figures.map(([type,label]) => [`viz-${type}`,label]) });
 figureGroups.at(-1).figures.unshift(["viz-space","Координатное пространство XYZ"]);
 export const figures = figureGroups.flatMap(group => group.figures);
-export const drawableTools = ["pen", "line", "image", "attachment", ...figures.map(([value]) => value)];
+export const drawableTools = ["pen", "highlighter", "line", "image", "attachment", ...figures.map(([value]) => value)];
 
 export function shapeBounds(item) {
   const first = item.points[0];
@@ -36,7 +36,7 @@ export function shapeBounds(item) {
     const width = Math.min(Math.abs(last[0] - first[0]), Math.abs(last[1] - first[1]) * 2 / Math.sqrt(3));
     last = [first[0] + Math.sign(last[0] - first[0]) * width, first[1] + Math.sign(last[1] - first[1]) * width * Math.sqrt(3) / 2];
   }
-  if (item.type === "pen") {
+  if (item.type === "pen" || item.type === "highlighter") {
     const xs = item.points.map(p => p[0]), ys = item.points.map(p => p[1]);
     const x = Math.min(...xs), y = Math.min(...ys);
     return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
@@ -47,7 +47,8 @@ export function shapeBounds(item) {
 export function BoardShape({ item, erase = false, preview = false, selectable = false, visualization = {},onFileOpen }) {
   const first = item.points[0], last = item.points.at(-1);
   const { x, y, width, height } = shapeBounds(item);
-  const props = { stroke: item.color, strokeWidth: item.size, fill: "none", strokeLinecap: "round", strokeLinejoin: "round", "data-shape-id": preview ? undefined : item.id, "data-shape-type": preview ? undefined : item.type, pointerEvents: erase || selectable ? "stroke" : "none" };
+  const props = { stroke: item.color, strokeWidth: item.size, opacity: item.type === "highlighter" ? 0.3 : undefined, fill: "none", strokeLinecap: "round", strokeLinejoin: "round", "data-shape-id": preview ? undefined : item.id, "data-shape-type": preview ? undefined : item.type, pointerEvents: erase || selectable ? "stroke" : "none" };
+  if(item.type==="image"&&item.crop)return <svg data-shape-id={item.id} data-shape-type="image" x={x} y={y} width={width} height={height} viewBox={`${item.crop.x} ${item.crop.y} ${item.crop.width} ${item.crop.height}`} preserveAspectRatio="none" overflow="hidden" pointerEvents={erase?"all":"none"}><AssetImage assetId={item.assetId} src={item.src} width="1" height="1" preserveAspectRatio="none"/></svg>;
   if (item.type === "image") return <AssetImage assetId={item.assetId} src={item.src} data-shape-id={item.id} data-shape-type="image" x={x} y={y} width={width} height={height} preserveAspectRatio="xMidYMid meet" pointerEvents={erase ? "all" : "none"} />;
   if (item.type === "attachment") return <FileCard item={item} box={{x,y,width,height}} onOpen={onFileOpen} selectable={selectable} erase={erase}/>;
   if (item.type === "rect" || item.type === "square") return <rect {...props} x={x} y={y} width={width} height={height} />;

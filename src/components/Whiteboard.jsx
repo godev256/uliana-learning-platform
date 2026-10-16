@@ -1,3 +1,5 @@
+import {mergeNotebooks} from "../account/board-sync.js";
+import ImageCrop from "./board-image-crop.jsx";
 import { AttachmentViewer } from "./board-attachments.jsx";
 import { storeAsset,readAsset,blobDataUrl } from "./board-assets.js";
 import { pdfPageCount,pdfPageImage } from "./board-pdf.js";
@@ -8,7 +10,7 @@ import { sanitizeConstructions, sameReference, validSpatialPair, spatialPoint, n
 import { visualizationLayout } from "./board-visualization.jsx";
 import { useEffect, useRef, useState } from "react";
 import "./whiteboard.css";
-import { useBoardViewport, BOARD_TOUCH_QUERY } from "./use-board-viewport.js";
+import { useBoardViewport, BOARD_TOUCH_QUERY, BOARD_DEFAULT_ZOOM, BOARD_MIN_ZOOM } from "./use-board-viewport.js";
 import { figures, figureGroups, drawableTools, BoardShape as Shape, FigureIcon, shapeBounds } from "./board-shapes.jsx";
 import { resizedShape, SelectionControls, SelectionHitArea, HandIcon } from "./board-selection.jsx";
 import { isSolid, isVisualization, sanitizeEdgePoints, sanitizeFreePoints, validPointLabel, pointLabelKey, vertexNames, solidType } from "./board-solids.js";
@@ -21,10 +23,12 @@ const BRAND_WIDTH = 80;
 const PAGE_WIDTH = DRAW_WIDTH + BRAND_WIDTH;
 const PAGE_HEIGHT = 2376;
 const tools = [
-  ["select", "Ладошка", "hand"], ["pen", "Ручка", "✎"], ["eraser", "Ластик", "⌫"],
+  ["select", "Ладошка", "hand"], ["pen", "Ручка", "✎"], ["highlighter", "Выделитель", "marker"], ["eraser", "Ластик", "⌫"],
   ["line", "Линия", "╱"],
 ];
 const colors = [["#212123", "Чёрный"], ["#2f493f", "Зелёный"], ["#3058a0", "Синий"], ["#b24838", "Красный"]];
+
+const highlightColors = [["#f2d34f", "Жёлтый"], ["#83c98b", "Салатовый"], ["#76bce8", "Голубой"], ["#ed94b6", "Розовый"], ["#b79ade", "Сиреневый"]];
 
 function constructionTarget(hit) {
   const target=hit?.closest("[data-free-point-id], [data-intersection-point-id], [data-edge-point-id], [data-spatial-line-id], [data-spatial-plane-id]");
@@ -34,16 +38,17 @@ function constructionTarget(hit) {
   return {kind,id,shapeId:target.closest("[data-shape-id]")?.dataset.shapeId};
 }
 
-function loadNotebook() {
+function loadNotebook(source,storageKey=NOTEBOOK_KEY) {
   try {
-    const notebook = JSON.parse(localStorage.getItem(NOTEBOOK_KEY));
-    const stored = notebook?.items ?? JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const notebook = source ?? JSON.parse(localStorage.getItem(storageKey));
+    const stored = notebook?.items ?? (storageKey===NOTEBOOK_KEY ? JSON.parse(localStorage.getItem(STORAGE_KEY)) : []);
     if (!Array.isArray(stored) || stored.length > 10000) return { items: [], pageCount: 3 };
     const items = stored.filter(item => item && typeof item.id === "string" &&
       drawableTools.includes(item.type) && (item.type!=="image" || validBoardImage(item.src) || typeof item.assetId==="string") && (item.type!=="attachment" || typeof item.assetId==="string" && typeof item.name==="string" && item.name.length<=512 && ["pdf","file"].includes(item.format) && (item.format!=="pdf" || Number.isInteger(item.pageCount)&&item.pageCount>0)) &&
-      /^#[0-9a-f]{6}$/i.test(item.color) && Number.isFinite(item.size) && item.size > 0 && item.size <= 24 &&
+      /^#[0-9a-f]{6}$/i.test(item.color) && Number.isFinite(item.size) && item.size > 0 && item.size <= (item.type === "highlighter" ? 72 : 24) &&
       Array.isArray(item.points) && item.points.length && item.points.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite)))
       .map(item => ({ ...item, page: Number.isInteger(item.page) && item.page >= 0 && item.page < 100 ? item.page : 0,
+        ...(item.type==="image"?{crop:item.crop&&['x','y','width','height'].every(key=>Number.isFinite(item.crop[key]))&&item.crop.x>=0&&item.crop.y>=0&&item.crop.width>0&&item.crop.height>0&&item.crop.x+item.crop.width<=1.000001&&item.crop.y+item.crop.height<=1.000001?item.crop:undefined}:{}),
         ...(isSolid(item.type) ? { rotation: Array.isArray(item.rotation) && item.rotation.length === 3 && item.rotation.every(Number.isFinite) ? item.rotation.map(value=>value%360) : [0,0,0] } : {}),
         ...(isVisualization(item.type) ? {edgePoints:sanitizeEdgePoints(item.type,item.edgePoints),...(item.type==="viz-space" || item.freePoints ? {freePoints:sanitizeFreePoints(item.freePoints)} : {})} : {}) }))
       .map(item => isVisualization(item.type) ? sanitizeConstructions(item) : item);
@@ -70,14 +75,16 @@ async function renderPage(node) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-export default function Whiteboard() {
-  const [initial] = useState(loadNotebook);
+export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNotebookChange,onNotebookPreview,syncNotebook,cloudStatus,topicsPanel,pdfMode=false,studentMode=false,backHref="/",backLabel="← На сайт"}) {
+  const [initial] = useState(()=>loadNotebook(initialNotebook,storageKey));
   const [items, setItems] = useState(initial.items);
   const itemsRef = useRef(items);
+  const syncedNotebook=useRef(syncNotebook);
   const [pageCount, setPageCount] = useState(initial.pageCount);
   const pageCountRef = useRef(pageCount);
   const fileInput=useRef(null);
   const [openFile,setOpenFile]=useState(null);
+  const [cropId,setCropId]=useState(null);
   const [fileBusy,setFileBusy]=useState(false);
   const [fileNotice,setFileNotice]=useState("");
   const [expanding,setExpanding]=useState("");
@@ -89,10 +96,16 @@ export default function Whiteboard() {
   const [tool, setTool] = useState("pen");
   const [color, setColor] = useState(colors[0][0]);
   const [size, setSize] = useState(4);
-  const [grid, setGrid] = useState(true);
+  const [highlightColor, setHighlightColor] = useState(highlightColors[0][0]);
+  const [highlightSize, setHighlightSize] = useState(36);
+  const [grid, setGrid] = useState(()=>!pdfMode);
   const [draft, setDraft] = useState(null);
   const [selectedAxesId, setSelectedAxesId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [selectedIds,setSelectedIds] = useState([]);
+  const [marquee,setMarquee] = useState(null);
+  const [groupDraft,setGroupDraft] = useState(null);
+  const lastSelectionPress=useRef(null);
   const [manipulation, setManipulation] = useState("move");
   const [visualizationModes,setVisualizationModes] = useState({});
   const [lineStarts,setLineStarts] = useState({});
@@ -103,14 +116,16 @@ export default function Whiteboard() {
   const [renameError,setRenameError] = useState("");
   const gesture = useRef(null);
   const [optionsOpen,setOptionsOpen] = useState(false);
-  const {viewportRef,zoom,changeZoom,captureHandlers,startPan,movePan,endPan} = useBoardViewport(() => {
-    if (gesture.current) update(gesture.current.before);
-    gesture.current = null; setDraft(null); setLineStarts({}); setPlaneStarts({});
+  const {viewportRef,contentRef,viewportWidth,zoom,changeZoom,captureHandlers,startPan,movePan,endPan} = useBoardViewport(() => {
+    if (gesture.current) {
+      onNotebookPreview?.({items:gesture.current.before,pageCount:pageCountRef.current});
+      update(gesture.current.before);
+    }
+    gesture.current = null; lastSelectionPress.current=null; setDraft(null); setGroupDraft(null); setMarquee(null); setLineStarts({}); setPlaneStarts({});
   });
   const sheets = useRef([]);
   const figuresMenu = useRef(null);
   const activeFigure = figures.find(([value]) => value === tool);
-  const [clearOpen, setClearOpen] = useState(false);
   const [deletePage, setDeletePage] = useState(null);
   const deleteFrom=Number(deletePage?.from),deleteTo=Number(deletePage?.mode==="range" ? deletePage?.to : deletePage?.from);
   const deleteCount=deleteTo-deleteFrom+1;
@@ -120,12 +135,23 @@ export default function Whiteboard() {
   const viewedFile=items.find(item=>item.id===openFile && item.type==="attachment");
   const selectedSolid = tool === "select" && selectedItem && isSolid(selectedItem.type) && !isVisualization(selectedItem.type);
 
+  const usingHighlighter = tool === "highlighter" || tool === "select" && selectedItem?.type === "highlighter";
+  const activeColor = usingHighlighter ? (tool === "select" ? selectedItem.color : highlightColor) : color;
+  const activeSize = usingHighlighter ? (tool === "select" ? selectedItem.size : highlightSize) : size;
+  const displayedItems=items.map(item=>groupDraft?.find(row=>row.id===item.id)??item);
+  const groupItems=displayedItems.filter(item=>selectedIds.includes(item.id));
+  const groupBounds=rows=>{
+    const boxes=rows.map(shapeBounds),x=Math.min(...boxes.map(box=>box.x)),y=Math.min(...boxes.map(box=>box.y));
+    return {x,y,width:Math.max(...boxes.map(box=>box.x+box.width))-x,height:Math.max(...boxes.map(box=>box.y+box.height))-y};
+  };
+  useEffect(()=>{setSelectedIds([]);setGroupDraft(null);setMarquee(null);lastSelectionPress.current=null;},[tool]);
   const update = (value) => { itemsRef.current = value; setItems(value); };
   const updatePageCount = count => { pageCountRef.current = count; setPageCount(count); };
   const snapshot = () => ({ items: itemsRef.current, pageCount: pageCountRef.current });
   const remember = (savedItems, count = pageCountRef.current) => { setPast(history => [...history.slice(-49), { items: savedItems, pageCount: count }]); setFuture([]); };
   const editStyle = (key, value) => {
-    if (key === "color") setColor(value); else setSize(value);
+    if (usingHighlighter) { if (key === "color") setHighlightColor(value); else setHighlightSize(value); }
+    else { if (key === "color") setColor(value); else setSize(value); }
     if (tool !== "select") return;
     const selected = itemsRef.current.find(item => item.id === selectedId);
     if (!selected || selected[key] === value) return;
@@ -146,7 +172,8 @@ export default function Whiteboard() {
   };
 
   const goToPage = page => {
-    sheets.current[page]?.closest(".board-page")?.scrollIntoView({ block: "start" });
+    const node=sheets.current[page]?.closest(".board-page"),viewport=viewportRef.current;
+    if(node&&viewport)viewport.scrollTop+=node.getBoundingClientRect().top-viewport.getBoundingClientRect().top;
   };
   const addPage = () => {
     remember(itemsRef.current);
@@ -231,23 +258,45 @@ export default function Whiteboard() {
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem(NOTEBOOK_KEY, JSON.stringify({ items, pageCount })); setStatus("Сохранено в этом браузере"); }
+    try { localStorage.setItem(storageKey, JSON.stringify({ items, pageCount })); if(!cloudStatus)setStatus("Сохранено в этом браузере"); }
     catch { setStatus("Не удалось сохранить. Скачайте PDF, чтобы не потерять записи."); }
-  }, [items, pageCount]);
+    onNotebookChange?.({items,pageCount});
+  }, [items, pageCount,storageKey,onNotebookChange]);
+
+  useEffect(()=>{
+    if(!syncNotebook||syncNotebook===syncedNotebook.current||gesture.current)return;
+    const base=syncNotebook.base; syncedNotebook.current=syncNotebook;
+    if(!base)return;
+    const merged=mergeNotebooks(base,{items:itemsRef.current,pageCount:pageCountRef.current},syncNotebook.notebook);
+    if(JSON.stringify(merged.items)!==JSON.stringify(itemsRef.current))update(merged.items);
+    if(merged.pageCount!==pageCountRef.current)updatePageCount(merged.pageCount);
+    setPast(history=>history.map(book=>mergeNotebooks(base,book,syncNotebook.notebook)));
+    setFuture(history=>history.map(book=>mergeNotebooks(base,book,syncNotebook.notebook)));
+  },[syncNotebook,draft]);
+  useEffect(()=>{
+    if(onNotebookPreview&&draft&&gesture.current?.mode==="rotate")onNotebookPreview({items:itemsRef.current.map(item=>item.id===draft.id?draft:item),pageCount:pageCountRef.current});
+  },[draft,onNotebookPreview]);
 
   useEffect(() => {
     const handle = event => {
-      if ((event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) && event.key !== "Escape") return;
+      if ((event.target.closest?.("input, textarea, select") || event.target.isContentEditable) && event.key !== "Escape") return;
+      if (event.key.toLowerCase() === "p" && !event.metaKey && !event.ctrlKey && !event.altKey && !event.isComposing && !gesture.current && !renamePoint && deletePage===null && !openFile && !cropId && !expanding) {
+        event.preventDefault();setTool("pen");setSelectedId(null);setSelectedAxesId(null);
+        if(figuresMenu.current)figuresMenu.current.open=false;
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
         event.preventDefault(); if (event.shiftKey) redo(); else undo();
       }
       if (event.key === "Escape") {
         if(expanding)return;
         setOpenFile(null);
-        setClearOpen(false);
+        setCropId(null);
         setDeletePage(null);
         setRenamePoint(null);
         setSelectedId(null);
+        setSelectedIds([]);setMarquee(null);setGroupDraft(null);
+        if(gesture.current?.mode==='marquee'||gesture.current?.mode==='group-move')gesture.current=null;
         setLineStarts({});
         setPlaneStarts({});
         if (figuresMenu.current?.open) { figuresMenu.current.open = false; figuresMenu.current.querySelector("summary")?.focus(); }
@@ -259,7 +308,7 @@ export default function Whiteboard() {
 
   useEffect(() => {
     const paste = event => {
-      if(event.target.closest?.("input, textarea, select, [contenteditable='true']") || renamePoint || clearOpen || deletePage!==null || openFile)return;
+      if(studentMode || event.target.closest?.("input, textarea, select, [contenteditable='true']") || renamePoint || deletePage!==null || openFile || cropId)return;
       const files=[...(event.clipboardData?.items??[])].filter(item=>item.kind==="file" && /^image\/(png|jpeg|webp|gif|bmp|avif)$/.test(item.type)).map(item=>item.getAsFile()).filter(Boolean);
       if(!files.length)return;
       event.preventDefault();
@@ -278,7 +327,8 @@ export default function Whiteboard() {
             if(page.index>=pageCountRef.current)continue;
             const ratio=Math.min(1,1200/image.width,1400/image.height),width=image.width*ratio,height=image.height*ratio;
             const x=Math.max(0,Math.min(DRAW_WIDTH-width,center[0]-width/2)),y=Math.max(0,Math.min(PAGE_HEIGHT-height,center[1]-height/2));
-            const item={id:boardId(),type:"image",page:page.index,color:"#212123",size:4,points:[[x,y],[x+width,y+height]],src:image.src};
+            const assetId=await storeAsset(await(await fetch(image.src)).blob());
+            const item={id:boardId(),type:"image",page:page.index,color:"#212123",size:4,points:[[x,y],[x+width,y+height]],assetId};
             remember(itemsRef.current);update([...itemsRef.current,item]);setSelectedId(item.id);setTool("pen");
           }
         } catch {setStatus("Не удалось вставить изображение. Попробуйте скопировать скриншот ещё раз.");}
@@ -289,7 +339,7 @@ export default function Whiteboard() {
   });
 
   const importFiles = async files => {
-    if(importing.current || !files.length)return;
+    if(studentMode || importing.current || !files.length)return;
     importing.current=true;setFileBusy(true);
     const viewport=viewportRef.current.getBoundingClientRect();
     const top=window.matchMedia(BOARD_TOUCH_QUERY).matches ? viewport.top : document.querySelector(".board-controls").getBoundingClientRect().bottom;
@@ -355,10 +405,12 @@ export default function Whiteboard() {
     const element = event.currentTarget;
     const bounds = element.getBoundingClientRect();
     const style = getComputedStyle(element);
-    const left = parseFloat(style.borderLeftWidth) || 0;
-    const right = parseFloat(style.borderRightWidth) || 0;
-    const top = parseFloat(style.borderTopWidth) || 0;
-    const bottom = parseFloat(style.borderBottomWidth) || 0;
+    const cssWidth=parseFloat(style.width),rawBorders=(parseFloat(style.borderLeftWidth)||0)+(parseFloat(style.borderRightWidth)||0);
+    const borderScale=cssWidth?bounds.width/(cssWidth+(style.boxSizing==="border-box"?0:rawBorders)):1;
+    const left = (parseFloat(style.borderLeftWidth) || 0)*borderScale;
+    const right = (parseFloat(style.borderRightWidth) || 0)*borderScale;
+    const top = (parseFloat(style.borderTopWidth) || 0)*borderScale;
+    const bottom = (parseFloat(style.borderBottomWidth) || 0)*borderScale;
     const width = bounds.width - left - right;
     const height = bounds.height - top - bottom;
     const scale = Math.min(width / PAGE_WIDTH, height / PAGE_HEIGHT);
@@ -374,12 +426,31 @@ export default function Whiteboard() {
       return;
     }
     const target = hit?.closest("[data-shape-id]");
-    if (target && Number(target.closest("svg")?.dataset.pageIndex) === gesture.current?.item.page) update(itemsRef.current.filter(item => item.id !== target.dataset.shapeId));
+    if (target && !itemsRef.current.find(item=>item.id===target.dataset.shapeId)?.background && Number(target.closest("svg")?.dataset.pageIndex) === gesture.current?.item.page) update(itemsRef.current.filter(item => item.id !== target.dataset.shapeId));
   };
   const start = event => {
     if (event.button !== 0 || gesture.current || event.target.closest("[data-brand-strip]")) return;
     event.preventDefault();
     const page = Number(event.currentTarget.dataset.pageIndex);
+    if(tool==="select"){
+      const previous=lastSelectionPress.current,now=performance.now();
+      const twice=previous&&previous.page===page&&now-previous.time<450&&Math.hypot(event.clientX-previous.x,event.clientY-previous.y)<16;
+      lastSelectionPress.current={page,time:now,x:event.clientX,y:event.clientY};
+      const groupHit=event.target.closest('[data-group-selection]');
+      const objectHit=event.target.closest('[data-select-id], [data-shape-id], [data-resize-id]');
+      if((twice&&!objectHit&&!groupHit)||(!objectHit&&!groupHit&&event.pointerType!=="touch"&&!window.matchMedia(BOARD_TOUCH_QUERY).matches)){
+        event.currentTarget.setPointerCapture(event.pointerId);
+        const origin=point(event);setSelectedId(null);setSelectedIds([]);setGroupDraft(null);
+        gesture.current={mode:"marquee",pointerId:event.pointerId,before:itemsRef.current,page,start:origin,end:origin};
+        setMarquee({page,x:origin[0],y:origin[1],width:0,height:0});return;
+      }
+      if(groupHit&&groupItems.length){
+        event.currentTarget.setPointerCapture(event.pointerId);
+        gesture.current={mode:"group-move",pointerId:event.pointerId,before:itemsRef.current,originals:groupItems,start:point(event),dx:0,dy:0};
+        return;
+      }
+      setSelectedIds([]);setGroupDraft(null);
+    }
     const handle = event.target.closest("[data-resize-id]");
     const visualization = event.target.closest("[data-viz-body], [data-viz-header]");
     if (!handle && visualization && (tool === "select" || tool === "visualization")) {
@@ -518,7 +589,8 @@ export default function Whiteboard() {
       const item = itemsRef.current.find(item => item.id === id && item.page === page);
       flushSync(()=>setSelectedId(item?.id ?? null));
       if (!item) { startPan(event); return; }
-      setColor(item.color); setSize(item.size);
+      if (item.type === "highlighter") { setHighlightColor(item.color); setHighlightSize(item.size); }
+      else { setColor(item.color); setSize(item.size); }
       event.currentTarget.setPointerCapture(event.pointerId);
       gesture.current = { pointerId: event.pointerId, before: itemsRef.current, item, original: item, start: point(event), clientStart:[event.clientX,event.clientY], mode: handle ? "resize" : isSolid(item.type) && manipulation === "rotate" ? "rotate" : "move", corner: Number(handle?.dataset.selectCorner) };
       setDraft(item);
@@ -535,13 +607,23 @@ export default function Whiteboard() {
     }
     const id = boardId();
     if (tool === "axes") setSelectedAxesId(id);
-    gesture.current = { pointerId: event.pointerId, before: itemsRef.current, item: { id, page, type: tool, color, size, points: [point(event)] } };
+    gesture.current = { pointerId: event.pointerId, before: itemsRef.current, item: { id, page, type: tool, color: tool === "highlighter" ? highlightColor : color, size: tool === "highlighter" ? highlightSize : size, points: [point(event)] } };
     if (tool === "eraser") erase(event); else setDraft(gesture.current.item);
   };
   const move = event => {
     if (movePan(event)) return;
     const current = gesture.current;
     if (!current || current.pointerId !== event.pointerId) return;
+    if(current.mode==="marquee"){
+      current.end=point(event);const [x,y]=current.start,[endX,endY]=current.end;
+      setMarquee({page:current.page,x:Math.min(x,endX),y:Math.min(y,endY),width:Math.abs(endX-x),height:Math.abs(endY-y)});return;
+    }
+    if(current.mode==="group-move"){
+      const next=point(event),box=groupBounds(current.originals);
+      current.dx=Math.max(-box.x,Math.min(DRAW_WIDTH-box.x-box.width,next[0]-current.start[0]));
+      current.dy=Math.max(-box.y,Math.min(PAGE_HEIGHT-box.y-box.height,next[1]-current.start[1]));
+      setGroupDraft(current.originals.map(item=>({...item,points:item.points.map(([x,y])=>[x+current.dx,y+current.dy])})));return;
+    }
     if (current.item.type === "eraser") { erase(event); return; }
     if (current.mode === "mark" || current.mode === "rename") {
       if (Math.hypot(event.clientX-current.clientStart[0],event.clientY-current.clientStart[1])>10) { current.cancelled = true; setDraft(null); }
@@ -566,7 +648,7 @@ export default function Whiteboard() {
     }
     current.item = { ...current.item, points: current.resizeHandle !== undefined
       ? current.item.points.map((p, index) => index === current.resizeHandle ? next : p)
-      : current.item.type === "pen" ? [...current.item.points, next] : [current.item.points[0], next] };
+      : ["pen", "highlighter"].includes(current.item.type) ? [...current.item.points, next] : [current.item.points[0], next] };
     setDraft(current.item);
   };
   const finish = event => {
@@ -574,7 +656,19 @@ export default function Whiteboard() {
     const current = gesture.current;
     if (!current || current.pointerId !== event.pointerId) return;
     gesture.current = null; setDraft(null);
-    if (event.type === "pointercancel") { update(current.before); return; }
+    if (event.type === "pointercancel") { onNotebookPreview?.({items:current.before,pageCount:pageCountRef.current}); update(current.before);setMarquee(null);setGroupDraft(null);return; }
+    if(current.mode==="marquee"){
+      const [x,y]=current.start,[endX,endY]=current.end,left=Math.min(x,endX),top=Math.min(y,endY),right=Math.max(x,endX),bottom=Math.max(y,endY);
+      const ids=Math.abs(endX-x)>5&&Math.abs(endY-y)>5?current.before.filter(item=>{if(item.page!==current.page||item.background)return false;const box=shapeBounds(item);return box.x>=left&&box.y>=top&&box.x+box.width<=right&&box.y+box.height<=bottom;}).map(item=>item.id):[];
+      setSelectedIds(ids);setMarquee(null);return;
+    }
+    if(current.mode==="group-move"){
+      if(Math.abs(current.dx)>.01||Math.abs(current.dy)>.01){
+        const ids=new Set(current.originals.map(item=>item.id));remember(current.before);
+        update(current.before.map(item=>ids.has(item.id)?{...item,points:item.points.map(([x,y])=>[x+current.dx,y+current.dy])}:item));
+      }
+      setGroupDraft(null);return;
+    }
     if (current.mode === "rename") {
       if (!current.cancelled) requestAnimationFrame(()=>openPointEditor(current.original,current.reference));
       return;
@@ -599,6 +693,19 @@ export default function Whiteboard() {
       remember(current.before);
       update(current.resizeHandle !== undefined ? current.before.map(item => item.id === current.item.id ? current.item : item) : [...current.before, current.item]);
     }
+  };
+  const renameAttachment=(id,name)=>{
+    if(studentMode||!name.trim()||name.length>512)return false;
+    const original=itemsRef.current.find(item=>item.id===id&&item.type==="attachment");
+    if(!original)return false;
+    if(original.name!==name){remember(itemsRef.current);update(itemsRef.current.map(item=>item.id===id?{...item,name}:item));}
+    return true;
+  };
+  const applyImageCrop=area=>{
+    const original=itemsRef.current.find(item=>item.id===cropId&&item.type==="image");if(!original){setCropId(null);return;}
+    const box=shapeBounds(original),previous=original.crop??{x:0,y:0,width:1,height:1};
+    const cropped={...original,crop:{x:previous.x+area.x*previous.width,y:previous.y+area.y*previous.height,width:area.width*previous.width,height:area.height*previous.height},points:[[box.x+area.x*box.width,box.y+area.y*box.height],[box.x+(area.x+area.width)*box.width,box.y+(area.y+area.height)*box.height]]};
+    remember(itemsRef.current);update(itemsRef.current.map(item=>item.id===original.id?cropped:item));setCropId(null);
   };
   const downloadPdf = async () => {
     if (exporting) return;
@@ -626,39 +733,40 @@ export default function Whiteboard() {
     finally { setExporting(false); }
   };
 
-  return <main className="whiteboard">
+  return <main className="whiteboard" style={{"--board-zoom":zoom,"--board-view-width":viewportWidth?`${viewportWidth}px`:"100%"}}>
+    <div className="board-surface">
     <header className="board-header">
-      <a href="/" className="board-back">← На сайт</a>
-      <div><h1>Математическая доска</h1><p>Ручка — писать · ладошка — листать · два пальца — масштаб</p></div>
-      <span className="board-badge">Пробная версия</span>
+      <a href={backHref} className="board-back">{backLabel}</a>
+      <div><h1>Математическая доска</h1><p role={cloudStatus?"status":undefined}>{cloudStatus||"Ручка — писать · ладошка — листать · два пальца — масштаб"}</p></div>
+      <span className="board-badge">{pdfMode?"Рабочий лист PDF":"Пробная версия"}</span>
     </header>
     <div className="board-controls">
     <div className="board-toolbar" role="toolbar" aria-label="Инструменты доски">
-      <div className="board-tools">{tools.map(([value, label, icon]) => <button key={value} type="button" className="board-tool" aria-pressed={tool === value} title={value === "eraser" ? "Ластик: стереть штрих или фигуру целиком" : value === "select" ? "Выбрать, переместить или изменить фигуру" : label} onClick={() => setTool(value)}><span aria-hidden="true">{icon === "hand" ? <HandIcon /> : icon}</span>{label}</button>)}
-        <button type="button" className="board-tool" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><span aria-hidden="true">↥</span>Загрузить файл</button>
-        <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/>
-        <details ref={figuresMenu} className="board-figures">
+      <div className="board-tools">{tools.map(([value, label, icon]) => <button key={value} type="button" className="board-tool" aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть штрих или фигуру целиком" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); if (value === "highlighter") setOptionsOpen(true); }}><span aria-hidden="true">{icon === "hand" ? <HandIcon /> : icon === "marker" ? <svg width="23" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="m8 15 8-12 5 4-8 12-5-4Z M8 15l-3 4 4 2 4-2 M3 23h12" /></svg> : icon}</span>{label}</button>)}
+        {!studentMode&&<><button type="button" className="board-tool" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><span aria-hidden="true">↥</span>Загрузить файл</button>
+        <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/></>}
+        {!studentMode&&<details ref={figuresMenu} className="board-figures">
           <summary className={`board-tool ${activeFigure ? "is-active" : ""}`} aria-label="Фигуры"><span aria-hidden="true">◇</span>Фигуры <span className="board-figures-chevron" aria-hidden="true">⌄</span></summary>
           <div className="board-figures-panel" role="group" aria-label="Фигуры">
-            {figureGroups.map(group => <div className="board-figure-group" role="group" aria-label={group.title} key={group.title}>
+            {figureGroups.filter(group=>!pdfMode||!group.figures.some(([value])=>isVisualization(value))).map(group => <div className="board-figure-group" role="group" aria-label={group.title} key={group.title}>
               <h2>{group.title}</h2>
               {group.figures.map(([value, label]) => <button key={value} type="button" className="board-tool" aria-label={isVisualization(value) ? `${label} — 3D-визуализация` : undefined} aria-pressed={tool === value} onClick={() => { if (isVisualization(value)) insertVisualization(value); else setTool(value); figuresMenu.current.open = false; figuresMenu.current.querySelector("summary")?.focus(); }}><FigureIcon type={value} />{label}</button>)}
             </div>)}
           </div>
-        </details>
+        </details>}
       </div>
       <div className={`board-options ${optionsOpen ? "is-open" : ""}`} id="board-drawing-options">
-        <div className="board-colors" role="group" aria-label="Цвет">{colors.map(([value, label]) => <button key={value} type="button" style={{ "--swatch": value }} aria-label={label} aria-pressed={color === value} onClick={() => editStyle("color", value)} />)}</div>
-        <label className="board-size">Толщина <input type="range" min="2" max="12" value={size} onChange={event => editStyle("size", Number(event.target.value))} /><output>{size}</output></label>
+        <div className="board-colors" role="group" aria-label={usingHighlighter ? "Цвет выделителя" : "Цвет"}>{(usingHighlighter ? highlightColors : colors).map(([value, label]) => <button key={value} type="button" style={{ "--swatch": value }} aria-label={label} aria-pressed={activeColor === value} onClick={() => editStyle("color", value)} />)}</div>
+        <label className="board-size">Толщина <input type="range" aria-label={usingHighlighter ? "Толщина выделителя" : "Толщина ручки"} min={usingHighlighter ? 16 : 2} max={usingHighlighter ? 72 : 12} value={activeSize} onChange={event => editStyle("size", Number(event.target.value))} /><output>{activeSize}</output></label>
         <button type="button" className="board-action" aria-pressed={grid} onClick={() => setGrid(!grid)}>Клетка</button>
       </div>
     </div>
     <div className="board-mobile-view" role="group" aria-label="Масштаб листа">
-      <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=1} onClick={()=>changeZoom(zoom-.25)}>−</button><button className="board-action board-zoom-reset" type="button" aria-label="Лист по ширине экрана" onClick={()=>changeZoom(1)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}>+</button></div>
+      <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}>−</button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title="Вернуть масштаб 75%" onClick={()=>changeZoom(BOARD_DEFAULT_ZOOM)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}>+</button></div>
       <button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина {optionsOpen ? "⌃" : "⌄"}</button>
     </div>
-    {tool === "select" && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
-      {selectedItem?.type==="attachment" ? <button className="board-action" onClick={()=>{setFileNotice("");setOpenFile(selectedItem.id);}}>Открыть файл</button> : selectedItem?.type==="image" ? <span className="board-image-hint">Ладошка перемещает фото · уголки меняют размер</span> : <>
+    {tool === "select" && !groupItems.length && (selectedSolid || selectedItem?.type==="attachment") && selectedItem?.type!=="image" && (!pdfMode||selectedItem?.type==="attachment") && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
+      {selectedItem?.type==="attachment" ? <button className="board-action" onClick={()=>{setFileNotice("");setOpenFile(selectedItem.id);}}>Открыть файл</button> : <>
       <span>3D</span>
       <button className="board-action" type="button" disabled={!selectedSolid} aria-pressed={manipulation === "move"} onClick={()=>setManipulation("move")}>Перемещать</button>
       <button className="board-action" type="button" disabled={!selectedSolid} aria-pressed={manipulation === "rotate"} onClick={()=>setManipulation("rotate")}>⟳ Вращать</button>
@@ -666,22 +774,30 @@ export default function Whiteboard() {
       </>}
       <span>{selectedItem && isVisualization(selectedItem.type) ? "Внутри — вращать · за заголовок — перемещать · уголки — размер" : "Тяните внутри рамки · уголки меняют размер"}</span>
     </div>}
+    {tool==="select"&&groupItems.length>0&&<div className="board-selection-bar board-group-bar"><span>Выделено: {groupItems.length} · потяните внутри рамки</span><button type="button" className="board-action" onClick={()=>setSelectedIds([])}>Снять выделение</button></div>}
     <div className="board-actions">
       <div><button className="board-action" type="button" disabled={!past.length} aria-label="Отменить" title="Отменить" onClick={undo}><span aria-hidden="true">↶</span><span className="board-history-label"> Отменить</span></button><button className="board-action" type="button" disabled={!future.length} aria-label="Повторить" title="Повторить" onClick={redo}><span aria-hidden="true">↷</span><span className="board-history-label"> Повторить</span></button><button className="board-action" type="button" disabled={pageCount >= 100} onClick={addPage}>+ Добавить лист</button><button className="board-action" type="button" disabled={pageCount<=1} onClick={()=>setDeletePage({mode:"single",from:String(pageCount),to:String(pageCount)})}><span aria-hidden="true">− </span>Удалить лист</button></div>
-      <div><button className="board-action board-pdf-button" type="button" disabled={exporting} onClick={downloadPdf}>{exporting ? "Готовим PDF…" : "Скачать конспект PDF"}</button><button className="board-action" type="button" disabled={!items.length} onClick={() => setClearOpen(true)}>Очистить</button></div>
+      <div><button className="board-action board-pdf-button" type="button" disabled={exporting} onClick={downloadPdf}>{exporting ? "Готовим PDF…" : "Скачать конспект PDF"}</button></div>
     </div>
     </div>
-    <div className="board-workspace" ref={viewportRef} {...captureHandlers}>
-      <div className="board-pages" style={{"--board-zoom":zoom}}>
+    <div className={`board-workspace${topicsPanel?" has-topics":""}`}>
+      {topicsPanel}
+      <div className="board-sheet-viewport" ref={viewportRef} {...captureHandlers}>
+      <div className="board-pages" ref={contentRef}>
       {Array.from({ length: pageCount }, (_, page) => <section className="board-page" key={page} aria-label={`Лист ${page + 1}`}>
       <h2 className="board-page-label">Лист {page + 1} <span>A4</span></h2>
-      <svg ref={node => { sheets.current[page] = node; }} data-page-index={page} className={`board-paper ${tool === "eraser" ? "is-erasing" : tool === "select" ? `is-selecting ${manipulation === "rotate" ? "is-rotating" : ""}` : ""}`} viewBox={`0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}`} aria-label={`Поле для рисования, лист ${page + 1}`} onPointerDown={start} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish}>
+      <svg ref={node => { sheets.current[page] = node; }} data-page-index={page} className={`board-paper ${tool === "highlighter" ? "is-highlighting" : ""} ${tool === "eraser" ? "is-erasing" : tool === "select" ? `is-selecting ${manipulation === "rotate" ? "is-rotating" : ""}` : ""}`} viewBox={`0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}`} aria-label={`Поле для рисования, лист ${page + 1}`} onPointerDown={start} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish}>
         <defs><pattern id={`board-grid-${page}`} width={GRID_SIZE} height={GRID_SIZE} patternUnits="userSpaceOnUse"><path d={`M ${GRID_SIZE} 0 L 0 0 0 ${GRID_SIZE}`} fill="none" stroke="#e2e9e4" strokeWidth="1" /></pattern></defs>
         <rect width={PAGE_WIDTH} height={PAGE_HEIGHT} fill="#ffffff" />
         {grid && <rect width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={`url(#board-grid-${page})`} />}
-        {[...items.filter(item=>item.page===page && item.id!==draft?.id),...(draft?.page===page ? [draft] : [])].sort((a,b)=>Number(b.type==="image")-Number(a.type==="image")).map(item=><Shape key={item.id} item={item} erase={item.id!==draft?.id && tool==="eraser"} onFileOpen={id=>{setFileNotice("");setOpenFile(id);}} selectable={tool==="select" || tool==="axes" && item.type==="axes"} visualization={visualizationProps(item)}/>)}
-        {tool === "select" && items.filter(item => item.page === page && !isVisualization(item.type)).map(item => <SelectionHitArea key={item.id} item={draft?.id === item.id ? draft : item} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
-        {tool === "select" && (draft?.id === selectedId ? [draft] : items.filter(item => item.id === selectedId)).filter(item => item.page === page).map(item => <SelectionControls key={item.id} item={item} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
+        {[...displayedItems.filter(item=>item.page===page && item.id!==draft?.id),...(draft?.page===page ? [draft] : [])].sort((a,b)=>Number(b.type==="image")-Number(a.type==="image")).map(item=><Shape key={item.id} item={item} erase={!item.background && item.id!==draft?.id && tool==="eraser"} onFileOpen={id=>{setFileNotice("");setOpenFile(id);}} selectable={tool==="select" || tool==="axes" && item.type==="axes"} visualization={visualizationProps(item)}/>)}
+        {tool === "select" && displayedItems.filter(item => item.page === page && !item.background && !isVisualization(item.type)).map(item => <SelectionHitArea key={item.id} item={draft?.id === item.id ? draft : item} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
+        {tool === "select" && (draft?.id === selectedId ? [draft] : items.filter(item => item.id === selectedId)).filter(item => item.page === page).map(item => <SelectionControls key={item.id} item={item} onCrop={()=>setCropId(item.id)} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
+        {tool==="select"&&groupItems.length>0&&groupItems[0].page===page&&(()=>{
+          const box=groupBounds(groupItems),scale=PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH),padding=6*scale;
+          return <g data-selection-controls="true"><rect data-group-selection="true" x={box.x-padding} y={box.y-padding} width={box.width+padding*2} height={box.height+padding*2} fill="#2f493f" fillOpacity=".045" stroke="#2f493f" strokeWidth={scale} strokeDasharray={`${6*scale} ${4*scale}`} className="board-group-selection"/><text x={box.x} y={Math.max(16*scale,box.y-12*scale)} fill="#2f493f" fontSize={12*scale} pointerEvents="none">Выделено: {groupItems.length}</text></g>;
+        })()}
+        {marquee?.page===page&&<rect data-selection-controls="true" data-marquee="true" x={marquee.x} y={marquee.y} width={marquee.width} height={marquee.height} fill="#537361" fillOpacity=".1" stroke="#2f493f" strokeWidth={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)} strokeDasharray="8 6" pointerEvents="none"/>}
         {tool === "axes" && (draft?.type === "axes" ? [draft] : items.filter(item => item.id === selectedAxesId)).filter(item => item.page === page && item.points.length === 2).map(item => <g key={item.id} data-axis-controls="true">
           {item.points.map(([x, y], index) => {
             const scale = PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH);
@@ -691,17 +807,20 @@ export default function Whiteboard() {
             </g>;
           })}
         </g>)}
-        <g data-brand-strip="true" aria-label="ulianaa.maths">
+        <g data-brand-strip="true" aria-label="ulianaa.math">
           <rect x={DRAW_WIDTH} width={BRAND_WIDTH} height={PAGE_HEIGHT} fill="#2f493f" />
-          <text data-brand-handle="true" transform={`translate(${DRAW_WIDTH + BRAND_WIDTH / 2} ${PAGE_HEIGHT - 90}) rotate(-90)`} dominantBaseline="central" fill="#ffffff" fontFamily="Arial, sans-serif" fontSize="28" letterSpacing="2">ulianaa.maths</text>
+          <text data-brand-handle="true" transform={`translate(${DRAW_WIDTH + BRAND_WIDTH / 2} ${PAGE_HEIGHT - 90}) rotate(-90)`} dominantBaseline="central" fill="#ffffff" fontFamily="Arial, sans-serif" fontSize="28" letterSpacing="2">ulianaa.math</text>
         </g>
       </svg>
       </section>)}
       </div>
+      </div>
     </div>
-    <footer className="board-footer"><span role="status">{status}</span><span>{tool === "select" ? "Выберите фигуру · потяните, чтобы переместить · уголки меняют размер" : tool === "eraser" ? "Ластик удаляет штрих или фигуру целиком" : tool === "axes" ? "Оси X и Y · потяните по листу; кружки по углам меняют размер" : activeFigure ? `${activeFigure[1]} · потяните по листу, чтобы нарисовать` : tool === "visualization" ? "Действия внутри 3D-окна · ладошка перемещает окно" : "Рисуйте мышью, пальцем или стилусом"}</span></footer>
+    <footer className="board-footer"><span role="status">{status}</span><span>{tool === "select" ? "Потяните на пустом месте для выделения рамкой · двойное нажатие и перетягивание тоже выделяет область" : tool === "eraser" ? "Ластик удаляет штрих или фигуру целиком" : tool === "highlighter" ? "Проведите по записи, чтобы выделить её цветом" : tool === "axes" ? "Оси X и Y · потяните по листу; кружки по углам меняют размер" : activeFigure ? `${activeFigure[1]} · потяните по листу, чтобы нарисовать` : tool === "visualization" ? "Действия внутри 3D-окна · ладошка перемещает окно" : "Рисуйте мышью, пальцем или стилусом"}</span></footer>
+    </div>
     {fileNotice && <div className="board-file-notice" role="status"><span>{fileNotice}</span>{!fileBusy&&!expanding&&<button aria-label="Закрыть сообщение" onClick={()=>setFileNotice("")}>✕</button>}</div>}
-    {viewedFile && <AttachmentViewer key={viewedFile.id} item={viewedFile} onClose={()=>setOpenFile(null)} onExpand={expandFile} expanding={expanding} expanded={items.filter(item=>item.documentId===viewedFile.id).length===viewedFile.pageCount}/>}
+    {cropId&&items.find(item=>item.id===cropId&&item.type==="image")&&<ImageCrop key={cropId} item={items.find(item=>item.id===cropId)} onApply={applyImageCrop} onClose={()=>setCropId(null)}/>}
+    {viewedFile && <AttachmentViewer key={viewedFile.id} item={viewedFile} onRename={studentMode?undefined:renameAttachment} onClose={()=>setOpenFile(null)} onExpand={expandFile} expanding={expanding} expanded={items.filter(item=>item.documentId===viewedFile.id).length===viewedFile.pageCount}/>}
     {renamePoint && <div className="board-dialog-backdrop"><form className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="rename-point-title" onSubmit={savePointName}>
       <h2 id="rename-point-title">Название точки</h2>
       <label>Имя <input aria-label="Название точки" autoFocus onFocus={event=>event.target.select()} maxLength={8} value={pointName} aria-invalid={!!renameError} aria-describedby="point-name-help" onChange={event=>{setPointName(event.target.value);setRenameError("");}} /></label>
@@ -722,6 +841,5 @@ export default function Whiteboard() {
       {!validDeletion ? <p role="alert">{deleteTo<deleteFrom ? "Конец диапазона должен быть не раньше его начала." : "На доске должен остаться хотя бы один лист."}</p> : <p>{deleteCount===1 ? `Лист №${deleteFrom} и записи на нём будут удалены.` : `Листы с №${deleteFrom} по №${deleteTo} и записи на них будут удалены.`} Действие можно отменить.</p>}
       <div><button className="board-action" type="button" autoFocus onClick={()=>setDeletePage(null)}>Нет</button><button className="board-action" type="submit" disabled={!validDeletion}>Да, удалить</button></div>
     </form></div>}
-    {clearOpen && <div className="board-dialog-backdrop"><section className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="clear-board-title"><h2 id="clear-board-title">Очистить все листы?</h2><p>Все записи на листах будут удалены. Это действие можно отменить кнопкой «Отменить».</p><div><button className="board-action" type="button" autoFocus onClick={() => setClearOpen(false)}>Оставить рисунок</button><button className="board-action" type="button" onClick={() => { remember(itemsRef.current); update([]); setClearOpen(false); }}>Очистить доску</button></div></section></div>}
   </main>;
 }

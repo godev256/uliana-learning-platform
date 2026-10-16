@@ -25,8 +25,12 @@ export function FileCard({item,box,onOpen,selectable,erase}) {
     {item.coverId ? <AssetImage assetId={item.coverId} x={x+24} y={y+header+18} width={width-48} height={height-header-36} preserveAspectRatio="xMidYMid meet" pointerEvents="none"/> : <g fill="none" stroke="#91aa9b" strokeWidth="4" pointerEvents="none"><path d={`M${x+width*.38},${y+height*.4} h${width*.18} l${width*.08},${height*.12} v${height*.28} h-${width*.26} z`}/><path d={`M${x+width*.43},${y+height*.61} h${width*.16} m-${width*.16},${height*.07} h${width*.16}`}/></g>}
   </g>;
 }
-export function AttachmentViewer({item,onClose,onExpand,expanding,expanded}) {
+export function AttachmentViewer({item,onClose,onExpand,expanding,expanded,onRename}) {
   const [page,setPage]=useState(1),[asset,setAsset]=useState(null),[error,setError]=useState(""),[loading,setLoading]=useState(false),[text,setText]=useState(null);
+  const [renaming,setRenaming]=useState(false),[fileTitle,setFileTitle]=useState("");
+  const extension=item.name.match(/\.[a-z0-9]{1,12}$/i)?.[0]??"";
+  const beginRename=()=>{setFileTitle(extension?item.name.slice(0,-extension.length):item.name);setRenaming(true);};
+  const rename=event=>{event.preventDefault();if(!fileTitle.trim())return;if(onRename?.(item.id,fileTitle.trim()+extension)!==false)setRenaming(false);};
   const url=useAssetUrl(asset?.assetId);
   useEffect(()=>{
     let active=true;setError("");
@@ -45,7 +49,9 @@ export function AttachmentViewer({item,onClose,onExpand,expanding,expanded}) {
       <div className="board-file-actions">
         {item.format==="pdf" && <><button className="board-action" aria-label="Предыдущая страница" disabled={page<=1||!!expanding} onClick={()=>setPage(page-1)}>←</button><span>{page} / {item.pageCount}</span><button className="board-action" aria-label="Следующая страница" disabled={page>=item.pageCount||!!expanding} onClick={()=>setPage(page+1)}>→</button><button className="board-action board-pdf-button" disabled={!!expanding} onClick={()=>onExpand(item)}>{expanding || (expanded ? "Перейти к страницам" : "Развернуть все страницы")}</button></>}
         <button className="board-action" onClick={download}>Скачать оригинал</button>
+        {onRename&&<button type="button" className="board-action" disabled={!!expanding} onClick={beginRename}>Переименовать файл</button>}
       </div>
+      {renaming&&onRename&&<form className="board-file-rename" onSubmit={rename} onKeyDown={event=>{if(event.key==="Escape"){event.stopPropagation();setRenaming(false);}}}><label>Название файла<div><input aria-label="Новое название файла" autoFocus onFocus={event=>event.target.select()} maxLength={512-extension.length} required value={fileTitle} onChange={event=>setFileTitle(event.target.value)}/><span>{extension}</span></div></label><button className="board-action" disabled={!fileTitle.trim()}>Сохранить название файла</button><button type="button" className="board-action" onClick={()=>setRenaming(false)}>Отмена</button></form>}
       <div className="board-file-content" aria-busy={loading}>
         {error ? <p role="alert">{error}</p> : loading || item.format==="pdf"&&!url ? <p role="status">Загружаем страницу…</p> : item.format==="pdf" ? <img src={url} alt={`Страница ${page} — ${item.name}`} /> : text!==null ? <pre>{text}</pre> : <div className="board-file-placeholder"><span aria-hidden="true">▤</span><p>Этот формат можно открыть в приложении на устройстве.</p><button className="board-action board-pdf-button" onClick={download}>Скачать файл</button></div>}
       </div>

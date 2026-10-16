@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -30,12 +30,21 @@
     "verify:clipboard": "node scripts/verify-clipboard.mjs",
     "verify:touch-devices": "node scripts/verify-touch-devices.mjs",
     "verify:files": "node scripts/verify-files.mjs",
-    "verify:page-deletion": "node scripts/verify-page-deletion.mjs"
+    "verify:page-deletion": "node scripts/verify-page-deletion.mjs",
+    "accounts:setup": "node --env-file-if-exists=.env.local scripts/setup-teacher.mjs",
+    "verify:accounts": "node scripts/verify-accounts.mjs",
+    "verify:board-scale": "node scripts/verify-board-scale.mjs",
+    "verify:group-selection": "node scripts/verify-group-selection.mjs",
+    "verify:image-crop": "node scripts/verify-image-crop.mjs",
+    "verify:topics": "node scripts/verify-topics.mjs",
+    "verify:pdf-topics": "node scripts/verify-pdf-topics.mjs",
+    "verify:sheet-zoom": "node scripts/verify-sheet-zoom.mjs"
   },
   "dependencies": {
     "framer-motion": "^12.42.2",
     "jspdf": "^4.2.1",
     "pdfjs-dist": "^6.4.299",
+    "pg": "^8.23.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

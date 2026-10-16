@@ -9,3 +9,7 @@ playwright-report/
 .env
 .env.*
 !.env.example
+
+# Generated worksheet files and temporary checks
+output/
+tmp/
