@@ -1,4 +1,5 @@
 import {mergeNotebooks} from "../account/board-sync.js";
+import DrawingToolSettings from "./board-tool-settings.jsx";
 import ImageCrop from "./board-image-crop.jsx";
 import { AttachmentViewer } from "./board-attachments.jsx";
 import { storeAsset,readAsset,blobDataUrl } from "./board-assets.js";
@@ -8,7 +9,7 @@ import { clipboardImage, validBoardImage } from "./board-images.js";
 import { flushSync } from "react-dom";
 import { sanitizeConstructions, sameReference, validSpatialPair, spatialPoint, nearestProjectedEdge, constructionReferences, nextPointLabel, spatialIntersections, planeGeometry, withoutConstruction, nearestCoordinateAxis, clippedSpatialLine, spatialLinePoints } from "./board-space.js";
 import { visualizationLayout } from "./board-visualization.jsx";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./whiteboard.css";
 import { useBoardViewport, BOARD_TOUCH_QUERY, BOARD_DEFAULT_ZOOM, BOARD_MIN_ZOOM } from "./use-board-viewport.js";
 import { figures, figureGroups, drawableTools, BoardShape as Shape, FigureIcon, shapeBounds } from "./board-shapes.jsx";
@@ -116,6 +117,10 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const [renameError,setRenameError] = useState("");
   const gesture = useRef(null);
   const [optionsOpen,setOptionsOpen] = useState(false);
+  const [settingsTool,setSettingsTool]=useState(null);
+  const drawingButtons=useRef({});
+  const closeToolSettings=useCallback(restoreFocus=>{setSettingsTool(null);if(restoreFocus)drawingButtons.current[settingsTool]?.focus();},[settingsTool]);
+  useEffect(()=>{if(settingsTool&&settingsTool!==tool)setSettingsTool(null);},[tool,settingsTool]);
   const {viewportRef,contentRef,viewportWidth,zoom,changeZoom,captureHandlers,startPan,movePan,endPan} = useBoardViewport(() => {
     if (gesture.current) {
       onNotebookPreview?.({items:gesture.current.before,pageCount:pageCountRef.current});
@@ -734,6 +739,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   };
 
   return <main className="whiteboard" style={{"--board-zoom":zoom,"--board-view-width":viewportWidth?`${viewportWidth}px`:"100%"}}>
+    {settingsTool&&<DrawingToolSettings anchor={drawingButtons.current[settingsTool]} highlighter={settingsTool==="highlighter"} colors={settingsTool==="highlighter"?highlightColors:colors} color={activeColor} size={activeSize} onChange={editStyle} onClose={closeToolSettings}/>}
     <div className="board-surface">
     <header className="board-header">
       <a href={backHref} className="board-back">{backLabel}</a>
@@ -742,7 +748,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     </header>
     <div className="board-controls">
     <div className="board-toolbar" role="toolbar" aria-label="Инструменты доски">
-      <div className="board-tools">{tools.map(([value, label, icon]) => <button key={value} type="button" className="board-tool" aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть штрих или фигуру целиком" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); if (value === "highlighter") setOptionsOpen(true); }}><span aria-hidden="true">{icon === "hand" ? <HandIcon /> : icon === "marker" ? <svg width="23" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="m8 15 8-12 5 4-8 12-5-4Z M8 15l-3 4 4 2 4-2 M3 23h12" /></svg> : icon}</span>{label}</button>)}
+      <div className="board-tools">{tools.map(([value, label, icon]) => <button key={value} ref={node=>{if(value==="pen"||value==="highlighter")drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-haspopup={value==="pen"||value==="highlighter"?"dialog":undefined} aria-expanded={value==="pen"||value==="highlighter"?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть штрих или фигуру целиком" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(value==="pen"||value==="highlighter" ? settingsTool===value?null:value : null); }}><span aria-hidden="true">{icon === "hand" ? <HandIcon /> : icon === "marker" ? <svg width="23" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="m8 15 8-12 5 4-8 12-5-4Z M8 15l-3 4 4 2 4-2 M3 23h12" /></svg> : icon}</span>{label}</button>)}
         {!studentMode&&<><button type="button" className="board-tool" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><span aria-hidden="true">↥</span>Загрузить файл</button>
         <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/></>}
         {!studentMode&&<details ref={figuresMenu} className="board-figures">
@@ -755,15 +761,15 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
           </div>
         </details>}
       </div>
-      <div className={`board-options ${optionsOpen ? "is-open" : ""}`} id="board-drawing-options">
+      {tool!=="pen"&&tool!=="highlighter"&&<div className={`board-options ${optionsOpen ? "is-open" : ""}`} id="board-drawing-options">
         <div className="board-colors" role="group" aria-label={usingHighlighter ? "Цвет выделителя" : "Цвет"}>{(usingHighlighter ? highlightColors : colors).map(([value, label]) => <button key={value} type="button" style={{ "--swatch": value }} aria-label={label} aria-pressed={activeColor === value} onClick={() => editStyle("color", value)} />)}</div>
         <label className="board-size">Толщина <input type="range" aria-label={usingHighlighter ? "Толщина выделителя" : "Толщина ручки"} min={usingHighlighter ? 16 : 2} max={usingHighlighter ? 72 : 12} value={activeSize} onChange={event => editStyle("size", Number(event.target.value))} /><output>{activeSize}</output></label>
-        <button type="button" className="board-action" aria-pressed={grid} onClick={() => setGrid(!grid)}>Клетка</button>
-      </div>
+      </div>}
+      <button type="button" className="board-action board-grid-toggle" aria-pressed={grid} onClick={() => setGrid(!grid)}>Клетка</button>
     </div>
     <div className="board-mobile-view" role="group" aria-label="Масштаб листа">
       <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}>−</button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title="Вернуть масштаб 75%" onClick={()=>changeZoom(BOARD_DEFAULT_ZOOM)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}>+</button></div>
-      <button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина {optionsOpen ? "⌃" : "⌄"}</button>
+      {tool!=="pen"&&tool!=="highlighter"&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина {optionsOpen ? "⌃" : "⌄"}</button>}
     </div>
     {tool === "select" && !groupItems.length && (selectedSolid || selectedItem?.type==="attachment") && selectedItem?.type!=="image" && (!pdfMode||selectedItem?.type==="attachment") && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
       {selectedItem?.type==="attachment" ? <button className="board-action" onClick={()=>{setFileNotice("");setOpenFile(selectedItem.id);}}>Открыть файл</button> : <>

@@ -340,3 +340,21 @@
  .board-topic-rename { width:36px; min-height:44px; }
  .board-file-rename { padding:8px 12px; }
 }
+
+.board-drawing-settings { position:fixed; z-index:40; width:272px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 16px); overflow:auto; padding:12px; border:1px solid #bccabe; border-radius:10px; background:#fbfaf6; color:#212123; font-family:var(--font-body); }
+.board-drawing-settings header { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#2f493f; font-size:13px; }
+.board-drawing-settings header button { width:36px; height:36px; padding:0; border:0; border-radius:6px; background:transparent; color:#667f70; font-size:24px; cursor:pointer; }
+.board-drawing-settings header button:hover { background:#e7eee5; }
+.board-drawing-settings .board-colors { flex-wrap:nowrap; gap:0; margin:4px 0 12px; }
+.board-drawing-settings .board-colors button { flex:1; width:44px; height:44px; }
+.board-drawing-settings .board-size { display:flex; flex-wrap:nowrap; justify-content:space-between; gap:8px; font-size:12px; }
+.board-drawing-settings .board-size input { width:100%; min-width:0; }
+.board-drawing-settings .board-size output { min-width:20px; text-align:right; }
+.board-stroke-preview { display:block; width:100%; height:54px; margin-top:8px; background:white; border:1px solid #e0e7e1; border-radius:6px; }
+@media(max-width:1024px),(any-pointer:coarse){
+ .board-drawing-settings { width:min(272px,calc(100vw - 104px)); }
+ .board-drawing-settings .board-colors button { min-width:0; }
+ .board-drawing-settings .board-colors button::after { inset:12px 6px; }
+ .board-grid-toggle { margin:0 auto; }
+}
+.board-drawing-settings .board-colors button::after { inset:auto; width:22px; height:22px; top:50%; left:50%; transform:translate(-50%,-50%); }
