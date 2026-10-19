@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {createServer} from 'vite';
+import {chromium,webkit} from 'playwright';
+const server=await createServer({server:{host:'127.0.0.1',port:5189,strictPort:true}});await server.listen();
+try{for(const engine of [chromium,webkit]){const browser=await engine.launch();try{for(const width of [1440,390,320]){
+ const page=await browser.newPage({viewport:{width,height:1000}}),errors=[];page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:5189/board');await page.evaluate(()=>document.fonts.ready);
+ const styles=await page.evaluate(()=>[...document.querySelectorAll('.board-tools > .board-tool, .board-tools > .board-figures > summary')].map(node=>({font:getComputedStyle(node).fontFamily,weight:getComputedStyle(node).fontWeight,icon:!!node.querySelector('.board-icon')})));assert.ok(styles.every(s=>s.font.includes('Golos Text')&&s.weight==='400'&&s.icon));
+ const icons=await page.locator('.board-controls .board-icon').evaluateAll(nodes=>nodes.map(node=>({stroke:node.getAttribute('stroke-width'),view:node.getAttribute('viewBox'),cap:node.getAttribute('stroke-linecap'),effect:node.querySelector('path').getAttribute('vector-effect')})));assert.ok(icons.length>=12);assert.ok(icons.every(icon=>icon.stroke==='1.6'&&icon.view==='0 0 24 24'&&icon.cap==='round'&&icon.effect==='non-scaling-stroke'));
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await page.screenshot({path:`playwright-report/style-board-${engine.name()}-${width}.png`});await page.getByRole('button',{name:'Ручка',exact:true}).click();await page.getByRole('dialog',{name:'Настройки ручки',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Закрыть настройки',exact:true}).locator('.board-icon').count(),1);await page.getByRole('button',{name:'Закрыть настройки',exact:true}).click();
+ await page.locator('summary[aria-label="Фигуры"]').click();const figures=page.locator('.board-figures-panel');await figures.waitFor();assert.ok(await figures.locator('.board-figure-icon').count()>10);const strokes=await figures.locator('.board-figure-icon path').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).strokeWidth));assert.ok(strokes.every(n=>n==='1.6px'));
+ await page.screenshot({path:`playwright-report/style-figures-${engine.name()}-${width}.png`});await page.keyboard.press('Escape');
+ await page.getByRole('button',{name:'Выделитель',exact:true}).click();await page.screenshot({path:`playwright-report/style-marker-${engine.name()}-${width}.png`});assert.deepEqual(errors,[]);console.log(`${engine.name()} ${width}: uniform icon grid/stroke, consistent typography, figure previews, dialogs, responsive layout passed.`);await page.close();
+}}finally{await browser.close();}}}finally{await server.close();}

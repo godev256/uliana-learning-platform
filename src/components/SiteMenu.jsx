@@ -1,3 +1,4 @@
+import BoardIcon from "./board-icons.jsx";
 import { useEffect, useRef, useState } from "react";
 
 export default function SiteMenu() {
@@ -24,12 +25,12 @@ export default function SiteMenu() {
   return (
     <div className="site-menu" ref={menu}>
       <button ref={trigger} type="button" className="site-menu-toggle" aria-label="Меню сайта" aria-expanded={open} aria-controls="site-menu-links" onClick={() => setOpen(!open)}>
-        <span /><span /><span />
+        <BoardIcon name="menu"/>
       </button>
       {open && <nav id="site-menu-links" className="site-menu-links" aria-label="Меню сайта">
         <a href="/">Главная</a>
         <a href="/cabinet">Мой кабинет</a>
-        <a href="/board">Доска <span aria-hidden="true">↗</span></a>
+        <a href="/board">Доска <BoardIcon name="external"/></a>
       </nav>}
     </div>
   );

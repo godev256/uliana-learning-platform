@@ -1,3 +1,4 @@
+import BoardIcon from "../components/board-icons.jsx";
 import {useEffect,useState} from 'react';
 import {boardId} from '../components/board-id.js';
 import {receiveAsset,sendAsset} from './client.js';
@@ -26,8 +27,8 @@ export default function LessonNotes({attachment,studentId,teacher,index,onChange
   }catch(err){setError(err.message);}finally{setBusy(false);}
  }
  return <div className="account-lesson-notes"><span className="account-notes-label">Конспект урока</span>
-  {attachment?<><span className="account-notes-name" title={attachment.name}>{attachment.name}</span><div className="account-notes-actions"><button type="button" disabled={busy} onClick={()=>open()}>Открыть PDF ↗</button><button type="button" disabled={busy} onClick={()=>open(true)}>Скачать</button>{teacher&&<button type="button" disabled={busy} onClick={()=>onChange(null)}>Убрать PDF</button>}</div></>:!teacher&&<span className="account-notes-empty">Пока не прикреплён</span>}
-  {teacher&&<label className="account-secondary account-notes-upload">{busy?'Загрузка…':attachment?'Заменить PDF':'＋ Прикрепить PDF'}<input aria-label={`Конспект урока ${index+1}`} type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e=>{const file=e.target.files?.[0];e.target.value='';void upload(file);}}/></label>}
+  {attachment?<><span className="account-notes-name" title={attachment.name}>{attachment.name}</span><div className="account-notes-actions"><button type="button" disabled={busy} onClick={()=>open()} aria-label="Открыть PDF ↗">Открыть PDF<BoardIcon name="external"/></button><button type="button" disabled={busy} onClick={()=>open(true)}><BoardIcon name="download"/>Скачать</button>{teacher&&<button type="button" disabled={busy} onClick={()=>onChange(null)}>Убрать PDF</button>}</div></>:!teacher&&<span className="account-notes-empty">Пока не прикреплён</span>}
+  {teacher&&<label className="account-secondary account-notes-upload"><BoardIcon name={attachment?'upload':'plus'}/>{busy?'Загрузка…':attachment?'Заменить PDF':'Прикрепить PDF'}<input aria-label={`Конспект урока ${index+1}`} type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e=>{const file=e.target.files?.[0];e.target.value='';void upload(file);}}/></label>}
   {busy&&!teacher&&<small role="status">Загружаем конспект…</small>}{error&&<p className="account-error" role="alert">{error}</p>}
   {preview&&<div className="account-pdf-backdrop" onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setPreview(null);}}}><section className="account-pdf-dialog" role="dialog" aria-modal="true" aria-label="Конспект урока PDF"><header><strong>{preview.name}</strong><a href={preview.url} download={preview.name} className="account-secondary">Скачать PDF</a><button type="button" className="account-secondary" autoFocus onClick={()=>setPreview(null)}>Закрыть</button></header><iframe title="Просмотр конспекта урока" src={preview.url}/><p>Если просмотр PDF недоступен на устройстве, скачайте файл.</p></section></div>}
  </div>;

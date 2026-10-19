@@ -27,7 +27,7 @@ export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1
     return geometry ? {...plane,patch:clipPolygon(geometry.patch.map(model.projectPoint),contentBox),section:geometry.section.map(model.projectPoint)} : null;
   }).filter(Boolean);
   const center = [model.vertices.reduce((s,p)=>s+p[0],0)/model.vertices.length,model.vertices.reduce((s,p)=>s+p[1],0)/model.vertices.length];
-  return <g data-shape-id={item.id} data-shape-type={item.type} pointerEvents="all" fontFamily="Arial, sans-serif">
+  return <g data-shape-id={item.id} data-shape-type={item.type} pointerEvents="all" fontFamily="Golos Text, Arial, sans-serif">
     <rect x={x} y={y} width={width} height={height} rx={Math.min(32,width*.025)} fill="#ffffff" stroke="#c4d6cd" strokeWidth="3" />
     <g data-viz-header="true" style={{cursor:"move"}}>
       <rect x={x+2} y={y+2} width={width-4} height={header} rx="28" fill="#f0f5f1" />

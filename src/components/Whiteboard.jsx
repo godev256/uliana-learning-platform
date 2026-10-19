@@ -1,4 +1,5 @@
 import {mergeNotebooks} from "../account/board-sync.js";
+import BoardIcon from "./board-icons.jsx";
 import DrawingToolSettings from "./board-tool-settings.jsx";
 import ImageCrop from "./board-image-crop.jsx";
 import { AttachmentViewer } from "./board-attachments.jsx";
@@ -13,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import "./whiteboard.css";
 import { useBoardViewport, BOARD_TOUCH_QUERY, BOARD_DEFAULT_ZOOM, BOARD_MIN_ZOOM } from "./use-board-viewport.js";
 import { figures, figureGroups, drawableTools, BoardShape as Shape, FigureIcon, shapeBounds } from "./board-shapes.jsx";
-import { resizedShape, SelectionControls, SelectionHitArea, HandIcon } from "./board-selection.jsx";
+import { resizedShape, SelectionControls, SelectionHitArea } from "./board-selection.jsx";
 import { isSolid, isVisualization, sanitizeEdgePoints, sanitizeFreePoints, validPointLabel, pointLabelKey, vertexNames, solidType } from "./board-solids.js";
 
 const STORAGE_KEY = "uliana-whiteboard-v1";
@@ -24,8 +25,8 @@ const BRAND_WIDTH = 80;
 const PAGE_WIDTH = DRAW_WIDTH + BRAND_WIDTH;
 const PAGE_HEIGHT = 2376;
 const tools = [
-  ["select", "Ладошка", "hand"], ["pen", "Ручка", "✎"], ["highlighter", "Выделитель", "marker"], ["eraser", "Ластик", "⌫"],
-  ["line", "Линия", "╱"],
+  ["select", "Ладошка"], ["pen", "Ручка"], ["highlighter", "Выделитель"], ["eraser", "Ластик"],
+  ["line", "Линия"],
 ];
 const colors = [["#212123", "Чёрный"], ["#2f493f", "Зелёный"], ["#3058a0", "Синий"], ["#b24838", "Красный"]];
 
@@ -742,17 +743,17 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     {settingsTool&&<DrawingToolSettings anchor={drawingButtons.current[settingsTool]} highlighter={settingsTool==="highlighter"} colors={settingsTool==="highlighter"?highlightColors:colors} color={activeColor} size={activeSize} onChange={editStyle} onClose={closeToolSettings}/>}
     <div className="board-surface">
     <header className="board-header">
-      <a href={backHref} className="board-back">{backLabel}</a>
+      <a href={backHref} className="board-back" aria-label={backLabel}><BoardIcon name="arrow-left"/>{backLabel.replace(/^←\s*/, "")}</a>
       <div><h1>Математическая доска</h1><p role={cloudStatus?"status":undefined}>{cloudStatus||"Ручка — писать · ладошка — листать · два пальца — масштаб"}</p></div>
       <span className="board-badge">{pdfMode?"Рабочий лист PDF":"Пробная версия"}</span>
     </header>
     <div className="board-controls">
     <div className="board-toolbar" role="toolbar" aria-label="Инструменты доски">
-      <div className="board-tools">{tools.map(([value, label, icon]) => <button key={value} ref={node=>{if(value==="pen"||value==="highlighter")drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-haspopup={value==="pen"||value==="highlighter"?"dialog":undefined} aria-expanded={value==="pen"||value==="highlighter"?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть штрих или фигуру целиком" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(value==="pen"||value==="highlighter" ? settingsTool===value?null:value : null); }}><span aria-hidden="true">{icon === "hand" ? <HandIcon /> : icon === "marker" ? <svg width="23" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="m8 15 8-12 5 4-8 12-5-4Z M8 15l-3 4 4 2 4-2 M3 23h12" /></svg> : icon}</span>{label}</button>)}
-        {!studentMode&&<><button type="button" className="board-tool" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><span aria-hidden="true">↥</span>Загрузить файл</button>
+      <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(value==="pen"||value==="highlighter")drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-haspopup={value==="pen"||value==="highlighter"?"dialog":undefined} aria-expanded={value==="pen"||value==="highlighter"?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть штрих или фигуру целиком" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(value==="pen"||value==="highlighter" ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span>{label}</button>)}
+        {!studentMode&&<><button type="button" className="board-tool" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><BoardIcon name="upload"/>Загрузить файл</button>
         <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/></>}
         {!studentMode&&<details ref={figuresMenu} className="board-figures">
-          <summary className={`board-tool ${activeFigure ? "is-active" : ""}`} aria-label="Фигуры"><span aria-hidden="true">◇</span>Фигуры <span className="board-figures-chevron" aria-hidden="true">⌄</span></summary>
+          <summary className={`board-tool ${activeFigure ? "is-active" : ""}`} aria-label="Фигуры"><BoardIcon name="figures"/>Фигуры <BoardIcon name="chevron-down" className="board-figures-chevron"/></summary>
           <div className="board-figures-panel" role="group" aria-label="Фигуры">
             {figureGroups.filter(group=>!pdfMode||!group.figures.some(([value])=>isVisualization(value))).map(group => <div className="board-figure-group" role="group" aria-label={group.title} key={group.title}>
               <h2>{group.title}</h2>
@@ -765,25 +766,25 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         <div className="board-colors" role="group" aria-label={usingHighlighter ? "Цвет выделителя" : "Цвет"}>{(usingHighlighter ? highlightColors : colors).map(([value, label]) => <button key={value} type="button" style={{ "--swatch": value }} aria-label={label} aria-pressed={activeColor === value} onClick={() => editStyle("color", value)} />)}</div>
         <label className="board-size">Толщина <input type="range" aria-label={usingHighlighter ? "Толщина выделителя" : "Толщина ручки"} min={usingHighlighter ? 16 : 2} max={usingHighlighter ? 72 : 12} value={activeSize} onChange={event => editStyle("size", Number(event.target.value))} /><output>{activeSize}</output></label>
       </div>}
-      <button type="button" className="board-action board-grid-toggle" aria-pressed={grid} onClick={() => setGrid(!grid)}>Клетка</button>
+      <button type="button" className="board-action board-grid-toggle" aria-pressed={grid} onClick={() => setGrid(!grid)}><BoardIcon name="grid"/><span>Клетка</span></button>
     </div>
     <div className="board-mobile-view" role="group" aria-label="Масштаб листа">
-      <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}>−</button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title="Вернуть масштаб 75%" onClick={()=>changeZoom(BOARD_DEFAULT_ZOOM)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}>+</button></div>
-      {tool!=="pen"&&tool!=="highlighter"&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина {optionsOpen ? "⌃" : "⌄"}</button>}
+      <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}><BoardIcon name="minus"/></button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title="Вернуть масштаб 75%" onClick={()=>changeZoom(BOARD_DEFAULT_ZOOM)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}><BoardIcon name="plus"/></button></div>
+      {tool!=="pen"&&tool!=="highlighter"&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина <BoardIcon name={optionsOpen?"chevron-up":"chevron-down"}/></button>}
     </div>
     {tool === "select" && !groupItems.length && (selectedSolid || selectedItem?.type==="attachment") && selectedItem?.type!=="image" && (!pdfMode||selectedItem?.type==="attachment") && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
       {selectedItem?.type==="attachment" ? <button className="board-action" onClick={()=>{setFileNotice("");setOpenFile(selectedItem.id);}}>Открыть файл</button> : <>
       <span>3D</span>
       <button className="board-action" type="button" disabled={!selectedSolid} aria-pressed={manipulation === "move"} onClick={()=>setManipulation("move")}>Перемещать</button>
-      <button className="board-action" type="button" disabled={!selectedSolid} aria-pressed={manipulation === "rotate"} onClick={()=>setManipulation("rotate")}>⟳ Вращать</button>
+      <button className="board-action" type="button" disabled={!selectedSolid} aria-pressed={manipulation === "rotate"} onClick={()=>setManipulation("rotate")}><BoardIcon name="rotate"/>Вращать</button>
       <button className="board-action" type="button" disabled={!selectedSolid} onClick={resetView}>Сбросить ракурс</button>
       </>}
       <span>{selectedItem && isVisualization(selectedItem.type) ? "Внутри — вращать · за заголовок — перемещать · уголки — размер" : "Тяните внутри рамки · уголки меняют размер"}</span>
     </div>}
     {tool==="select"&&groupItems.length>0&&<div className="board-selection-bar board-group-bar"><span>Выделено: {groupItems.length} · потяните внутри рамки</span><button type="button" className="board-action" onClick={()=>setSelectedIds([])}>Снять выделение</button></div>}
     <div className="board-actions">
-      <div><button className="board-action" type="button" disabled={!past.length} aria-label="Отменить" title="Отменить" onClick={undo}><span aria-hidden="true">↶</span><span className="board-history-label"> Отменить</span></button><button className="board-action" type="button" disabled={!future.length} aria-label="Повторить" title="Повторить" onClick={redo}><span aria-hidden="true">↷</span><span className="board-history-label"> Повторить</span></button><button className="board-action" type="button" disabled={pageCount >= 100} onClick={addPage}>+ Добавить лист</button><button className="board-action" type="button" disabled={pageCount<=1} onClick={()=>setDeletePage({mode:"single",from:String(pageCount),to:String(pageCount)})}><span aria-hidden="true">− </span>Удалить лист</button></div>
-      <div><button className="board-action board-pdf-button" type="button" disabled={exporting} onClick={downloadPdf}>{exporting ? "Готовим PDF…" : "Скачать конспект PDF"}</button></div>
+      <div><button className="board-action" type="button" disabled={!past.length} aria-label="Отменить" title="Отменить" onClick={undo}><BoardIcon name="undo"/><span className="board-history-label"> Отменить</span></button><button className="board-action" type="button" disabled={!future.length} aria-label="Повторить" title="Повторить" onClick={redo}><BoardIcon name="redo"/><span className="board-history-label"> Повторить</span></button><button className="board-action" type="button" disabled={pageCount >= 100} onClick={addPage} aria-label="+ Добавить лист"><BoardIcon name="plus"/><span>Добавить лист</span></button><button className="board-action" type="button" disabled={pageCount<=1} onClick={()=>setDeletePage({mode:"single",from:String(pageCount),to:String(pageCount)})}><BoardIcon name="minus"/><span>Удалить лист</span></button></div>
+      <div><button className="board-action board-pdf-button" type="button" disabled={exporting} onClick={downloadPdf}><BoardIcon name="download"/>{exporting ? "Готовим PDF…" : "Скачать конспект PDF"}</button></div>
     </div>
     </div>
     <div className={`board-workspace${topicsPanel?" has-topics":""}`}>
@@ -815,7 +816,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         </g>)}
         <g data-brand-strip="true" aria-label="ulianaa.math">
           <rect x={DRAW_WIDTH} width={BRAND_WIDTH} height={PAGE_HEIGHT} fill="#2f493f" />
-          <text data-brand-handle="true" transform={`translate(${DRAW_WIDTH + BRAND_WIDTH / 2} ${PAGE_HEIGHT - 90}) rotate(-90)`} dominantBaseline="central" fill="#ffffff" fontFamily="Arial, sans-serif" fontSize="28" letterSpacing="2">ulianaa.math</text>
+          <text data-brand-handle="true" transform={`translate(${DRAW_WIDTH + BRAND_WIDTH / 2} ${PAGE_HEIGHT - 90}) rotate(-90)`} dominantBaseline="central" fill="#ffffff" fontFamily="Golos Text, Arial, sans-serif" fontSize="28" letterSpacing="2">ulianaa.math</text>
         </g>
       </svg>
       </section>)}
@@ -824,7 +825,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     </div>
     <footer className="board-footer"><span role="status">{status}</span><span>{tool === "select" ? "Потяните на пустом месте для выделения рамкой · двойное нажатие и перетягивание тоже выделяет область" : tool === "eraser" ? "Ластик удаляет штрих или фигуру целиком" : tool === "highlighter" ? "Проведите по записи, чтобы выделить её цветом" : tool === "axes" ? "Оси X и Y · потяните по листу; кружки по углам меняют размер" : activeFigure ? `${activeFigure[1]} · потяните по листу, чтобы нарисовать` : tool === "visualization" ? "Действия внутри 3D-окна · ладошка перемещает окно" : "Рисуйте мышью, пальцем или стилусом"}</span></footer>
     </div>
-    {fileNotice && <div className="board-file-notice" role="status"><span>{fileNotice}</span>{!fileBusy&&!expanding&&<button aria-label="Закрыть сообщение" onClick={()=>setFileNotice("")}>✕</button>}</div>}
+    {fileNotice && <div className="board-file-notice" role="status"><span>{fileNotice}</span>{!fileBusy&&!expanding&&<button aria-label="Закрыть сообщение" onClick={()=>setFileNotice("")}><BoardIcon name="close"/></button>}</div>}
     {cropId&&items.find(item=>item.id===cropId&&item.type==="image")&&<ImageCrop key={cropId} item={items.find(item=>item.id===cropId)} onApply={applyImageCrop} onClose={()=>setCropId(null)}/>}
     {viewedFile && <AttachmentViewer key={viewedFile.id} item={viewedFile} onRename={studentMode?undefined:renameAttachment} onClose={()=>setOpenFile(null)} onExpand={expandFile} expanding={expanding} expanded={items.filter(item=>item.documentId===viewedFile.id).length===viewedFile.pageCount}/>}
     {renamePoint && <div className="board-dialog-backdrop"><form className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="rename-point-title" onSubmit={savePointName}>

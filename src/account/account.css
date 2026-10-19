@@ -148,3 +148,9 @@
 
 .account-calendar-day.has-lessons { background:#edf5e9; border-color:#c8dcc0; }
 .account-calendar-day.has-lessons.is-selected { background:#dcebd6; border-color:#2f493f; }
+
+.account-card h2,.account-page h2,.account-shell h2 { font-family:var(--font-display); font-weight:500; }
+.account-brand { font-family:var(--font-display); font-weight:400; }
+.account-page button,.account-shell button,.account-shell input,.account-shell select,.account-shell textarea { font-family:var(--font-body); }
+.account-header > a,.account-back,.account-notes-actions button { display:inline-flex; align-items:center; gap:6px; }
+.account-calendar-navigation .board-icon { width:20px; height:20px; }

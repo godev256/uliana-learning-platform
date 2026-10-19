@@ -1,3 +1,4 @@
+import BoardIcon from "../components/board-icons.jsx";
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {clearPrivateAssets} from '../components/board-assets.js';
 import Whiteboard from '../components/Whiteboard.jsx';
@@ -75,7 +76,7 @@ function CloudBoard({id,topicId='main',studentMode,topicTitle,topicsPanel,before
  const flush=useCallback(()=>sync.current?.flush()??Promise.resolve(true),[]);
  useEffect(()=>{beforeSwitch.current=flush;return()=>{if(beforeSwitch.current===flush)beforeSwitch.current=null;};},[beforeSwitch,flush]);
  useEffect(()=>{const guard=event=>{if(sync.current?.dirty||sync.current?.saving){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',guard);const refresh=()=>void sync.current?.refresh();window.addEventListener('online',refresh);window.addEventListener('focus',refresh);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};},[]);
- if(error)return <div className="account-shell"><a href="/cabinet">← В кабинет</a><Message error={error}/></div>;
+ if(error)return <div className="account-shell"><a href="/cabinet" aria-label="← В кабинет"><BoardIcon name="arrow-left"/>В кабинет</a><Message error={error}/></div>;
  if(recovery)return <div className="account-shell"><section className="account-card"><h1>На устройстве остались записи</h1><p>Доска также изменилась в другом окне. Выберите версию, которую хотите открыть. Восстановление записей с устройства заменит сохранённую версию.</p><button className="account-secondary" onClick={()=>{localStorage.removeItem(draftKey);load(recovery.remote,recovery.remote.notebook);setRecovery(null);}}>Открыть сохранённую версию</button><button className="account-primary" onClick={()=>{load(recovery.remote,recovery.draft.notebook);setRecovery(null);}}>Восстановить мои записи</button></section></div>;
  if(!data)return <p className="account-loading" role="status">Загружаем доску…</p>;
  const status=!localCopy?'Не удалось сохранить копию на устройстве. Скачайте PDF.':syncState.error?'Связь прервана. Записи на этом устройстве сохранены; повторяем подключение.':syncState.dirty?'Синхронизируем доску…':'Доска сохранена в кабинете.';
@@ -92,5 +93,5 @@ export default function AccountApp(){
  if(keys.some(key=>key.startsWith('uliana-account-draft:'))&&!window.confirm('На устройстве есть несохранённые записи. Выйти и удалить эти локальные копии?'))return;
  try{await accountRequest('logout',{});for(const key of keys)localStorage.removeItem(key);await clearPrivateAssets().catch(()=>{});location.href='/cabinet';}catch(err){setError(err.message);}
  }
- return <main className="account-page"><header className="account-header"><a href="/">← На сайт</a><a className="account-brand" href="/cabinet">ulianaa.math</a>{user&&<div><span>{user.login}</span><button className="account-secondary" onClick={logout}>Выйти</button></div>}</header><div className="account-shell"><Message error={error}/>{!error&&!user&&<Login setup={session?.setupRequired} onLogin={newUser=>setSession({user:newUser})}/>} {user&&(user.role==='teacher'&&!studentId?<Teacher/>:<><a className="account-back" href="/cabinet">{user.role==='teacher'?'← Все ученики':'Мой кабинет'}</a><Profile key={studentId} id={studentId} teacher={user.role==='teacher'}/></>)}</div></main>;
+ return <main className="account-page"><header className="account-header"><a href="/" aria-label="← На сайт"><BoardIcon name="arrow-left"/>На сайт</a><a className="account-brand" href="/cabinet">ulianaa.math</a>{user&&<div><span>{user.login}</span><button className="account-secondary" onClick={logout}>Выйти</button></div>}</header><div className="account-shell"><Message error={error}/>{!error&&!user&&<Login setup={session?.setupRequired} onLogin={newUser=>setSession({user:newUser})}/>} {user&&(user.role==='teacher'&&!studentId?<Teacher/>:<><a className="account-back" href="/cabinet">{user.role==='teacher'&&<BoardIcon name="arrow-left"/>}{user.role==='teacher'?'Все ученики':'Мой кабинет'}</a><Profile key={studentId} id={studentId} teacher={user.role==='teacher'}/></>)}</div></main>;
 }

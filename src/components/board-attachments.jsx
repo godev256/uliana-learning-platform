@@ -1,3 +1,4 @@
+import BoardIcon from "./board-icons.jsx";
 import { useEffect,useState } from "react";
 import { readAsset,downloadAsset } from "./board-assets.js";
 import { pdfPageImage } from "./board-pdf.js";
@@ -20,8 +21,8 @@ export function FileCard({item,box,onOpen,selectable,erase}) {
   return <g data-shape-id={item.id} data-shape-type="attachment" role="button" aria-label={`Открыть файл ${item.name}`} tabIndex={0} pointerEvents="all" style={{cursor:selectable?"grab":"pointer"}} onPointerDown={event=>{if(!selectable&&!erase)event.stopPropagation();}} onClick={()=>{if(!selectable&&!erase)onOpen?.(item.id);}} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onOpen?.(item.id);}}}>
     <rect x={x} y={y} width={width} height={height} rx="20" fill="#fff" stroke="#bdcec4" strokeWidth="3"/>
     <rect x={x+2} y={y+2} width={width-4} height={header} rx="18" fill="#edf4ef"/>
-    <text x={x+width*.04} y={y+header*.42} fontFamily="Arial,sans-serif" fill="#2f493f" fontSize={font} fontWeight="600">{item.name.length>37?item.name.slice(0,34)+"…":item.name}</text>
-    <text x={x+width*.04} y={y+header*.78} fontFamily="Arial,sans-serif" fill="#64786b" fontSize={font*.64}>{item.format==="pdf" ? `PDF · ${item.pageCount} стр. · Нажмите, чтобы открыть` : "Вложение · Нажмите, чтобы открыть"}</text>
+    <text x={x+width*.04} y={y+header*.42} fontFamily="Golos Text, Arial, sans-serif" fill="#2f493f" fontSize={font} fontWeight="600">{item.name.length>37?item.name.slice(0,34)+"…":item.name}</text>
+    <text x={x+width*.04} y={y+header*.78} fontFamily="Golos Text, Arial, sans-serif" fill="#64786b" fontSize={font*.64}>{item.format==="pdf" ? `PDF · ${item.pageCount} стр. · Нажмите, чтобы открыть` : "Вложение · Нажмите, чтобы открыть"}</text>
     {item.coverId ? <AssetImage assetId={item.coverId} x={x+24} y={y+header+18} width={width-48} height={height-header-36} preserveAspectRatio="xMidYMid meet" pointerEvents="none"/> : <g fill="none" stroke="#91aa9b" strokeWidth="4" pointerEvents="none"><path d={`M${x+width*.38},${y+height*.4} h${width*.18} l${width*.08},${height*.12} v${height*.28} h-${width*.26} z`}/><path d={`M${x+width*.43},${y+height*.61} h${width*.16} m-${width*.16},${height*.07} h${width*.16}`}/></g>}
   </g>;
 }
@@ -45,15 +46,15 @@ export function AttachmentViewer({item,onClose,onExpand,expanding,expanded,onRen
   const download=()=>downloadAsset(item.assetId,item.name).catch(err=>setError(err.message));
   return <div className="board-dialog-backdrop board-file-backdrop" onClick={event=>{if(event.target===event.currentTarget&&!expanding)onClose();}}>
     <section className="board-file-viewer" role="dialog" aria-modal="true" aria-labelledby="file-viewer-title">
-      <header><div><h2 id="file-viewer-title">{item.name}</h2><p>{item.format==="pdf" ? `Страница ${page} из ${item.pageCount}` : "Файл с вашего устройства"}</p></div><button className="board-action" aria-label="Закрыть файл" onClick={onClose} disabled={!!expanding}>✕</button></header>
+      <header><div><h2 id="file-viewer-title">{item.name}</h2><p>{item.format==="pdf" ? `Страница ${page} из ${item.pageCount}` : "Файл с вашего устройства"}</p></div><button className="board-action" aria-label="Закрыть файл" onClick={onClose} disabled={!!expanding}><BoardIcon name="close"/></button></header>
       <div className="board-file-actions">
-        {item.format==="pdf" && <><button className="board-action" aria-label="Предыдущая страница" disabled={page<=1||!!expanding} onClick={()=>setPage(page-1)}>←</button><span>{page} / {item.pageCount}</span><button className="board-action" aria-label="Следующая страница" disabled={page>=item.pageCount||!!expanding} onClick={()=>setPage(page+1)}>→</button><button className="board-action board-pdf-button" disabled={!!expanding} onClick={()=>onExpand(item)}>{expanding || (expanded ? "Перейти к страницам" : "Развернуть все страницы")}</button></>}
-        <button className="board-action" onClick={download}>Скачать оригинал</button>
-        {onRename&&<button type="button" className="board-action" disabled={!!expanding} onClick={beginRename}>Переименовать файл</button>}
+        {item.format==="pdf" && <><button className="board-action" aria-label="Предыдущая страница" disabled={page<=1||!!expanding} onClick={()=>setPage(page-1)}><BoardIcon name="arrow-left"/></button><span>{page} / {item.pageCount}</span><button className="board-action" aria-label="Следующая страница" disabled={page>=item.pageCount||!!expanding} onClick={()=>setPage(page+1)}><BoardIcon name="arrow-right"/></button><button className="board-action board-pdf-button" disabled={!!expanding} onClick={()=>onExpand(item)}>{expanding || (expanded ? "Перейти к страницам" : "Развернуть все страницы")}</button></>}
+        <button className="board-action" onClick={download}><BoardIcon name="download"/>Скачать оригинал</button>
+        {onRename&&<button type="button" className="board-action" disabled={!!expanding} onClick={beginRename}><BoardIcon name="pen"/>Переименовать файл</button>}
       </div>
       {renaming&&onRename&&<form className="board-file-rename" onSubmit={rename} onKeyDown={event=>{if(event.key==="Escape"){event.stopPropagation();setRenaming(false);}}}><label>Название файла<div><input aria-label="Новое название файла" autoFocus onFocus={event=>event.target.select()} maxLength={512-extension.length} required value={fileTitle} onChange={event=>setFileTitle(event.target.value)}/><span>{extension}</span></div></label><button className="board-action" disabled={!fileTitle.trim()}>Сохранить название файла</button><button type="button" className="board-action" onClick={()=>setRenaming(false)}>Отмена</button></form>}
       <div className="board-file-content" aria-busy={loading}>
-        {error ? <p role="alert">{error}</p> : loading || item.format==="pdf"&&!url ? <p role="status">Загружаем страницу…</p> : item.format==="pdf" ? <img src={url} alt={`Страница ${page} — ${item.name}`} /> : text!==null ? <pre>{text}</pre> : <div className="board-file-placeholder"><span aria-hidden="true">▤</span><p>Этот формат можно открыть в приложении на устройстве.</p><button className="board-action board-pdf-button" onClick={download}>Скачать файл</button></div>}
+        {error ? <p role="alert">{error}</p> : loading || item.format==="pdf"&&!url ? <p role="status">Загружаем страницу…</p> : item.format==="pdf" ? <img src={url} alt={`Страница ${page} — ${item.name}`} /> : text!==null ? <pre>{text}</pre> : <div className="board-file-placeholder"><BoardIcon name="file"/><p>Этот формат можно открыть в приложении на устройстве.</p><button className="board-action board-pdf-button" onClick={download}>Скачать файл</button></div>}
       </div>
     </section>
   </div>;

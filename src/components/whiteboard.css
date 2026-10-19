@@ -358,3 +358,34 @@
  .board-grid-toggle { margin:0 auto; }
 }
 .board-drawing-settings .board-colors button::after { inset:auto; width:22px; height:22px; top:50%; left:50%; transform:translate(-50%,-50%); }
+
+/* One icon system and one body-font rhythm across the workspace. */
+.board-icon { display:inline-block; width:20px; height:20px; flex:0 0 20px; vertical-align:middle; color:inherit; }
+.board-tool,.board-action,.board-topic-rename,.board-topic-pdf-upload { font-family:var(--font-body); font-weight:400; line-height:1.35; }
+.board-action { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.board-tool > span { display:inline-flex; align-items:center; justify-content:center; }
+.board-tool .board-icon { width:20px; height:20px; }
+.board-figures-chevron.board-icon { width:14px; height:14px; flex-basis:14px; }
+.board-figure-icon { width:24px; height:24px; }
+.board-figure-icon :is(path,line,rect,ellipse,polygon) { stroke-width:1.6px; vector-effect:non-scaling-stroke; stroke-linecap:round; stroke-linejoin:round; }
+.board-topic-card > span:first-child { display:inline-flex; align-items:center; justify-content:center; }
+.board-topic-rename { display:inline-flex; align-items:center; justify-content:center; padding:4px; }
+.board-topic-pdf-upload { display:flex; align-items:center; gap:6px; }
+.board-drawing-settings header button { display:inline-flex; align-items:center; justify-content:center; }
+.board-topic-rail summary { font-size:13px; font-weight:500; }
+.board-file-viewer h2,.board-dialog h2 { font-family:var(--font-display); font-weight:500; }
+.board-file-placeholder > .board-icon { width:36px; height:36px; }
+.board-tool:focus-visible,.board-action:focus-visible,.board-drawing-settings button:focus-visible { outline:2px solid #667f70; outline-offset:2px; }
+@media(max-width:1024px),(any-pointer:coarse){
+ .board-tools .board-tool .board-icon { width:22px; height:22px; flex-basis:22px; }
+ .board-actions .board-action { flex-direction:column; gap:3px; }
+ .board-actions .board-action .board-icon { flex-shrink:0; }
+ .board-grid-toggle { display:flex; flex-direction:column; gap:3px; width:78px; min-height:52px; font-size:10px; }
+}
+.board-back { display:inline-flex; align-items:center; gap:6px; }
+.board-topic-rail summary { display:flex; align-items:center; gap:5px; list-style:none; }
+.board-topic-rail summary::-webkit-details-marker { display:none; }
+.board-topic-rail summary .board-icon { width:16px; height:16px; flex-basis:16px; }
+@media(max-width:1024px),(any-pointer:coarse){
+ .board-figures-chevron.board-icon { display:none; }
+}

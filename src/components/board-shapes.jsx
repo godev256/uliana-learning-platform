@@ -75,7 +75,7 @@ export function BoardShape({ item, erase = false, preview = false, selectable = 
     return <g {...props}>
       <path d={`M${x},${cy} H${x + width} M${cx},${y + height} V${y}`} />
       <path d={`M${x + width - arrow},${cy - arrow / 2} L${x + width},${cy} L${x + width - arrow},${cy + arrow / 2} M${cx - arrow / 2},${y + arrow} L${cx},${y} L${cx + arrow / 2},${y + arrow}`} />
-      <g fill={item.color} stroke="none" fontFamily="Arial, sans-serif" fontSize={label} pointerEvents="none">
+      <g fill={item.color} stroke="none" fontFamily="Golos Text, Arial, sans-serif" fontSize={label} pointerEvents="none">
         <text x={x + width - label * .8} y={cy - label * .5}>X</text>
         <text x={cx + label * .4} y={y + label}>Y</text>
         <text x={cx + label * .3} y={cy + label * 1.1}>0</text>
