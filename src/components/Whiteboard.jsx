@@ -941,7 +941,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         </g>)}
         <g data-brand-strip="true" aria-label="ulianaa-learning.pro">
           <rect x={DRAW_WIDTH} width={BRAND_WIDTH} height={PAGE_HEIGHT} fill="#2f493f" />
-          <text data-brand-handle="true" transform={`translate(${DRAW_WIDTH + BRAND_WIDTH / 2} ${PAGE_HEIGHT - 90}) rotate(-90)`} dominantBaseline="central" fill="#ffffff" fontFamily="Golos Text, Arial, sans-serif" fontSize="28" letterSpacing="2">ulianaa-learning.pro</text>
+          <text data-brand-handle="true" transform={`translate(${DRAW_WIDTH + BRAND_WIDTH / 2} ${PAGE_HEIGHT - 90}) rotate(-90)`} dominantBaseline="central" fill="#D3E4D8" fontFamily="Golos Text, Arial, sans-serif" fontSize="28" letterSpacing="2">ulianaa-learning.pro</text>
         </g>
       </svg>
       </section>)}
