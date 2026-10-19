@@ -8,6 +8,6 @@ import "./index.css";
 // Монтируем приложение в корневой элемент страницы.
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    {window.location.pathname.startsWith("/cabinet") ? <AccountApp/> : window.location.pathname.replace(/\/$/, "") === "/board" ? <LocalTopicBoards /> : <App />}
+    {window.location.pathname.startsWith("/cabinet") ? <AccountApp/> : window.location.pathname.replace(/\/$/, "") === "/board" ? (import.meta.env.VITE_GO_BACKEND === "true" ? <AccountApp personalBoard/> : <LocalTopicBoards />) : <App />}
   </StrictMode>,
 );

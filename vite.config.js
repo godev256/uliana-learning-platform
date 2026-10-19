@@ -6,5 +6,9 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig(({mode})=>{
   Object.assign(process.env,loadEnv(mode,process.cwd(),""));
-  return {plugins: [react(), tailwindcss(), pdfAssets(), accountsApi()]};
+  const goAPI=process.env.GO_API_URL;
+  return {
+    plugins: [react(), tailwindcss(), pdfAssets(), ...(!goAPI?[accountsApi()]:[])],
+    server: goAPI ? {proxy:{'/api':{target:goAPI,changeOrigin:false}}} : undefined,
+  };
 });

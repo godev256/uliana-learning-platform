@@ -82,12 +82,12 @@ function CloudBoard({id,topicId='main',studentMode,topicTitle,topicsPanel,before
  const status=!localCopy?'Не удалось сохранить копию на устройстве. Скачайте PDF.':syncState.error?'Связь прервана. Записи на этом устройстве сохранены; повторяем подключение.':syncState.dirty?'Синхронизируем доску…':'Доска сохранена в кабинете.';
  return <Whiteboard studentMode={studentMode} pdfMode={data.topic?.kind==='pdf'} topicsPanel={topicsPanel} initialNotebook={data.notebook} syncNotebook={data.syncNotebook} storageKey={`uliana-account-board:${suffix}`} onNotebookChange={changed} onNotebookPreview={changed} backHref="/cabinet" backLabel="← В кабинет" cloudStatus={<>{data.student.login} · {topicTitle??data.topic?.title} · {status}{syncState.dirty&&<button type="button" className="account-inline" onClick={flush}>Повторить сохранение</button>}</>}/>;
 }
-export default function AccountApp(){
+export default function AccountApp({personalBoard=false}){
  const[session,setSession]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
  useEffect(()=>{accountRequest('session').then(setSession).catch(err=>setError(err.message)).finally(()=>setLoading(false));},[]);
- const user=session?.user,segments=location.pathname.split('/').filter(Boolean),board=segments[1]==='board',studentId=user?.role==='student'?user.id:segments[2];
+ const user=session?.user,segments=location.pathname.split('/').filter(Boolean),board=personalBoard||segments[1]==='board',studentId=user?.role==='student'?user.id:segments[2];
  if(loading)return <p className="account-loading" role="status">Открываем кабинет…</p>;
- if(user&&board)return <AccountBoards id={segments[2]||user.id} studentMode={user.role==='student'}/>;
+ if(user&&board)return <AccountBoards id={personalBoard?user.id:segments[2]||user.id} studentMode={user.role==='student'}/>;
  async function logout(){
  const keys=Object.keys(localStorage).filter(key=>key.startsWith('uliana-account-'));
  if(keys.some(key=>key.startsWith('uliana-account-draft:'))&&!window.confirm('На устройстве есть несохранённые записи. Выйти и удалить эти локальные копии?'))return;

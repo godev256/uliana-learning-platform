@@ -13,3 +13,6 @@ playwright-report/
 # Generated worksheet files and temporary checks
 output/
 tmp/
+
+# Independent local Go backend repository
+/backend-go/
