@@ -94,7 +94,7 @@ function BoardShapeContent({ item, erase = false, preview = false, selectable = 
 }
 
 function InkPath({ item, pathProps }) {
-  const d = useMemo(() => strokePath(item.points, item.smoothing), [item.points, item.smoothing]);
+  const d = useMemo(() => strokePath(item.points, item.smoothing, item.smoothingDistance), [item.points, item.smoothing, item.smoothingDistance]);
   return <path {...pathProps} d={d} />;
 }
 

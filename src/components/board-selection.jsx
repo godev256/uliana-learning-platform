@@ -18,7 +18,9 @@ export function resizedShape(item, corner, point, maxWidth, maxHeight) {
   const points = ["pen", "highlighter", "line"].includes(item.type)
     ? item.points.map(([px, py]) => [x + (box.width ? (px - box.x) / box.width : .5) * width, y + (box.height ? (py - box.y) / box.height : .5) * height])
     : [[x, y], [x + width, y + height]];
-  return { ...item, points };
+  const sx=box.width ? width/box.width : box.height ? height/box.height : 1;
+  const sy=box.height ? height/box.height : sx;
+  return { ...item, points, ...(item.smoothing===2 && Number.isFinite(item.smoothingDistance) ? {smoothingDistance:item.smoothingDistance*Math.sqrt(sx*sy)} : {}) };
 }
 
 export function SelectionControls({ item, scale, onCrop }) {

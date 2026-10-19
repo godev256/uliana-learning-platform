@@ -52,7 +52,7 @@ try{for(const engine of [chromium,webkit]){const browser=await engine.launch();t
   Object.defineProperty(event,'getCoalescedEvents',{value:()=>samples.map(([clientX,clientY])=>({clientX,clientY}))});svg.dispatchEvent(event);
  },pts.slice(1));await page.mouse.up();assert.equal((await stored()).items.length,0);
  // Curved ink is hit where its displayed quadratic curve runs, not just at samples.
- const curved=ink('curve',[[200,250],[350,400],[500,450],[650,400],[800,250]]);
+ const curved={...ink('curve',[[200,250],[350,400],[500,450],[650,400],[800,250]]),smoothing:2,smoothingDistance:10};
  await load({pageCount:2,items:[curved]});
  const spot=await paper.locator('[data-shape-id="curve"]').evaluate(node=>{const p=node.getPointAtLength(node.getTotalLength()*.5);return new DOMPoint(p.x,p.y).matrixTransform(node.getScreenCTM()).toJSON();});await page.mouse.click(spot.x,spot.y);assert.equal((await stored()).items.length,0);
  assert.deepEqual(errors,[]);console.log(`${engine.name()} ${width}: fast sweeps, overlapping ink, dots, screen radius at 50/175%, protected objects, page isolation, undo/redo/cancel, release and smooth curves passed.`);await page.close();

@@ -26,6 +26,16 @@ try {
         }, [strokePath([[0,20],[20,20],[20,0]],1),strokePath([[0,0],[10,20],[20,25],[30,20],[40,0]],1)]);
         assert.ok(geometry[0].some(([x,y])=>Math.hypot(x-20,y-20)<.05),'A mathematical right angle must keep its exact corner');
         assert.ok(geometry[1].every(([x,y])=>x>=0&&x<=40&&y>=0&&y<=25),'Smoothing must stay within the sampled bounds');
+        const oval=Array.from({length:181},(_,i)=>{const angle=i*Math.PI/90,jitter=i%2?3:-3;return [200+(100+jitter)*Math.cos(angle),200+(60+jitter)*Math.sin(angle)];});
+        const errorsOnOval=await page.evaluate(paths=>paths.map(d=>{
+          const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',d);
+          const length=path.getTotalLength();let error=0;
+          for(let i=0;i<1200;i++){const p=path.getPointAtLength(length*i/1199);error+=(Math.hypot((p.x-200)/100,(p.y-200)/60)-1)**2;}
+          return Math.sqrt(error/1200);
+        }),[strokePath(oval,1),strokePath(oval,2,10)]);
+        assert.ok(errorsOnOval[1]<errorsOnOval[0]*.85,`Oval jitter must decrease: ${errorsOnOval}`);
+        const sharp=strokePath([[0,20],[20,20],[20,0]],2,5);
+        assert.ok(sharp.includes('L20,20'),'The new pen must preserve a deliberate corner');
         const tools = page.locator('.board-tools > .board-tool, .board-tools > .board-figures > summary');
         const buttons = await tools.evaluateAll(nodes => nodes.map(node => ({
           text:node.textContent.trim(),label:node.getAttribute('aria-label'),title:node.title,
@@ -53,7 +63,9 @@ try {
         }, [x+40,y+28]);
         await page.mouse.up();
         const first = (await stored())[0];
-        assert.equal(first.smoothing, 1);
+        assert.equal(first.smoothing, 2);
+        assert.equal(first.size, 3);
+        assert.ok(first.smoothingDistance>0);
         assert.equal(first.points.length, 6, 'All coalesced samples and the release point are retained, without duplicates');
         const path = paper.locator('[data-shape-type="pen"]').first();
         const savedPath = await path.getAttribute('d');

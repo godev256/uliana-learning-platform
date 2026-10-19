@@ -1,3 +1,5 @@
+import { strokeDrawingPoints } from "./board-strokes.js";
+
 const distanceSquared = (point, a, b) => {
   const dx=b[0]-a[0],dy=b[1]-a[1],length=dx*dx+dy*dy;
   const t=length ? Math.max(0,Math.min(1,((point[0]-a[0])*dx+(point[1]-a[1])*dy)/length)) : 0;
@@ -19,8 +21,8 @@ function segmentsNear(a,b,c,d,radius) {
 // Flatten the same rounded path that is displayed, rather than the raw samples.
 // Half a board unit of curve error stays smaller than the eraser at every zoom.
 export function eraserPolyline(item) {
-  const points=item.points;
-  if (item.smoothing!==1 || points.length<3) return points;
+  const points=strokeDrawingPoints(item.points,item.smoothing,item.smoothingDistance);
+  if (![1,2].includes(item.smoothing) || points.length<3) return points;
   const result=[points[0]];
   const curve=(a,c,b,depth=0)=>{
     if (depth>=12 || distanceSquared(c,a,b)<=.25) {result.push(b);return;}

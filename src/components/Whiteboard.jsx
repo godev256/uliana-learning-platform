@@ -103,7 +103,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const [future, setFuture] = useState([]);
   const [tool, setTool] = useState("pen");
   const [color, setColor] = useState(colors[0][0]);
-  const [size, setSize] = useState(4);
+  const [size, setSize] = useState(3);
   const [highlightColor, setHighlightColor] = useState(highlightColors[0][0]);
   const [highlightSize, setHighlightSize] = useState(36);
   const [grid, setGrid] = useState(true);
@@ -723,8 +723,10 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       return;
     }
     const id = boardId();
+    const map=pointMapper(event,false),origin=map({clientX:0,clientY:0}),unit=map({clientX:1,clientY:0});
+    const smoothingDistance=2.25*Math.abs(unit[0]-origin[0]);
     if (tool === "axes") setSelectedAxesId(id);
-    gesture.current = { pointerId: event.pointerId, before: itemsRef.current, item: { id, page, type: tool, color: tool === "highlighter" ? highlightColor : color, size: tool === "highlighter" ? highlightSize : size, points: [point(event)], ...(["pen", "highlighter"].includes(tool) ? { smoothing: 1 } : {}) } };
+    gesture.current = { pointerId: event.pointerId, before: itemsRef.current, item: { id, page, type: tool, color: tool === "highlighter" ? highlightColor : color, size: tool === "highlighter" ? highlightSize : size, points: [point(event)], ...(tool === "pen" ? { smoothing: 2, smoothingDistance } : tool === "highlighter" ? { smoothing: 1 } : {}) } };
     if (tool === "eraser") erase(event); else setDraft(gesture.current.item);
   };
   const move = event => {
@@ -937,9 +939,9 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
             </g>;
           })}
         </g>)}
-        <g data-brand-strip="true" aria-label="ulianaa.math">
+        <g data-brand-strip="true" aria-label="ulianaa-teaching.pro">
           <rect x={DRAW_WIDTH} width={BRAND_WIDTH} height={PAGE_HEIGHT} fill="#2f493f" />
-          <text data-brand-handle="true" transform={`translate(${DRAW_WIDTH + BRAND_WIDTH / 2} ${PAGE_HEIGHT - 90}) rotate(-90)`} dominantBaseline="central" fill="#ffffff" fontFamily="Golos Text, Arial, sans-serif" fontSize="28" letterSpacing="2">ulianaa.math</text>
+          <text data-brand-handle="true" transform={`translate(${DRAW_WIDTH + BRAND_WIDTH / 2} ${PAGE_HEIGHT - 90}) rotate(-90)`} dominantBaseline="central" fill="#ffffff" fontFamily="Golos Text, Arial, sans-serif" fontSize="28" letterSpacing="2">ulianaa-teaching.pro</text>
         </g>
       </svg>
       </section>)}
