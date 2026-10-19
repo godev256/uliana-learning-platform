@@ -5,6 +5,7 @@ import ImageCrop from "./board-image-crop.jsx";
 import { AttachmentViewer } from "./board-attachments.jsx";
 import { storeAsset,readAsset,blobDataUrl } from "./board-assets.js";
 import { pdfPageCount,pdfPageImage } from "./board-pdf.js";
+import { eraserPolyline, eraserHits } from "./board-eraser.js";
 import { appendStrokePoints } from "./board-strokes.js";
 import { boardId } from "./board-id.js";
 import { clipboardImage, validBoardImage } from "./board-images.js";
@@ -491,7 +492,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     finally{setExpanding("");}
   };
 
-  const pointMapper = event => {
+  const pointMapper = (event, clamp = true) => {
     // Read the current viewport bounds: SVG screen matrices can lag behind scrolling.
     const element = event.currentTarget;
     const bounds = element.getBoundingClientRect();
@@ -508,7 +509,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     return sample => {
       const x = (sample.clientX - bounds.left - left - (width - PAGE_WIDTH * scale) / 2) / scale;
       const y = (sample.clientY - bounds.top - top - (height - PAGE_HEIGHT * scale) / 2) / scale;
-      return [Math.max(0, Math.min(DRAW_WIDTH, x)), Math.max(0, Math.min(PAGE_HEIGHT, y))];
+      return clamp ? [Math.max(0, Math.min(DRAW_WIDTH, x)), Math.max(0, Math.min(PAGE_HEIGHT, y))] : [x,y];
     };
   };
   const point = event => pointMapper(event)(event);
@@ -521,10 +522,28 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     if (points !== current.item.points) current.item = { ...current.item, points };
   };
   const erase = event => {
-    const hit = document.elementFromPoint(event.clientX, event.clientY);
-    const target = hit?.closest("[data-shape-id]");
-    const item = itemsRef.current.find(item => item.id === target?.dataset.shapeId);
-    if (inkItem(item) && !item.background && item.page === gesture.current?.item.page) update(itemsRef.current.filter(row => row.id !== item.id));
+    const current=gesture.current;
+    if(!current || current.item.type!=="eraser")return;
+    const map=pointMapper(event,false),native=event.nativeEvent??event;
+    const samples=[...(native.getCoalescedEvents?.()??[]),event].map(map);
+    const sweep=current.eraseLast ? [current.eraseLast,...samples] : samples;
+    current.eraseLast=sweep.at(-1);
+    // A constant screen radius remains easy to use when the sheet is zoomed out.
+    const origin=map({clientX:0,clientY:0}),unit=map({clientX:1,clientY:0});
+    const radius=(event.pointerType==="touch" ? 18 : 12)*Math.abs(unit[0]-origin[0]);
+    const left=Math.min(...sweep.map(p=>p[0]))-radius,right=Math.max(...sweep.map(p=>p[0]))+radius;
+    const top=Math.min(...sweep.map(p=>p[1]))-radius,bottom=Math.max(...sweep.map(p=>p[1]))+radius;
+    current.eraseCandidates??=current.before.filter(item=>inkItem(item)&&!item.background&&item.page===current.item.page)
+      .map(item=>({item,bounds:shapeBounds(item)}));
+    const removed=new Set();
+    current.eraseCandidates=current.eraseCandidates.filter(candidate=>{
+      const {item,bounds}=candidate,padding=item.size/2;
+      if(bounds.x-padding>right || bounds.x+bounds.width+padding<left || bounds.y-padding>bottom || bounds.y+bounds.height+padding<top)return true;
+      candidate.polyline??=eraserPolyline(item);
+      if(!eraserHits(candidate.polyline,sweep,radius+padding))return true;
+      removed.add(item.id);return false;
+    });
+    if(removed.size)update(itemsRef.current.filter(item=>!removed.has(item.id)));
   };
   const start = event => {
     if (event.button !== 0 || gesture.current || event.target.closest("[data-brand-strip]")) return;
@@ -764,6 +783,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     if (!current || current.pointerId !== event.pointerId) return;
     cancelStrokeFrame();
     if (event.type !== "pointercancel" && !current.mode && current.resizeHandle === undefined && ["pen", "highlighter"].includes(current.item.type)) sampleStroke(event, current);
+    if (event.type !== "pointercancel" && current.item?.type === "eraser") erase(event);
     gesture.current = null; setDraft(null);
     if (event.type === "pointercancel") { onNotebookPreview?.({items:current.before,pageCount:pageCountRef.current}); update(current.before);setMarquee(null);setGroupDraft(null);return; }
     if(current.mode==="marquee"){
