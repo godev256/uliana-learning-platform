@@ -2,7 +2,7 @@ import {useLayoutEffect,useRef,useState} from 'react';
 import BoardIcon from './board-icons.jsx';
 import {createPortal} from 'react-dom';
 
-export default function DrawingToolSettings({anchor,highlighter,colors,color,size,onChange,onClose}){
+export default function DrawingToolSettings({anchor,highlighter,colors,color,size,onChange,onClose,eraser=false,eraserMode,onEraserMode}){
  const panel=useRef(null),[position,setPosition]=useState(null);
  useLayoutEffect(()=>{
   const place=()=>{
@@ -20,11 +20,22 @@ export default function DrawingToolSettings({anchor,highlighter,colors,color,siz
   panel.current?.querySelector('[aria-pressed="true"]')?.focus({preventScroll:true});
   return()=>{observer.disconnect();window.removeEventListener('resize',place);document.removeEventListener('scroll',place,true);document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',escape,true);};
  },[anchor,onClose]);
- const title=highlighter?'Настройки выделителя':'Настройки ручки';
+ const title=eraser?'Настройки ластика':highlighter?'Настройки выделителя':'Настройки ручки';
  return createPortal(<section ref={panel} id="board-tool-settings" className="board-drawing-settings" role="dialog" aria-modal="false" aria-label={title} style={{left:position?.left??0,top:position?.top??0,visibility:position?'visible':'hidden'}}>
   <header><span>{title}</span><button type="button" aria-label="Закрыть настройки" onClick={()=>onClose(true)}><BoardIcon name="close"/></button></header>
+  {eraser ? <>
+    <div className="board-eraser-modes" role="group" aria-label="Режим ластика">
+      <button className="board-action" type="button" aria-pressed={eraserMode==='stroke'} onClick={()=>onEraserMode('stroke')}>Штрих целиком</button>
+      <button className="board-action" type="button" aria-pressed={eraserMode==='partial'} onClick={()=>onEraserMode('partial')}>Часть штриха</button>
+    </div>
+    <label className="board-size">Толщина <input type="range" aria-label="Толщина ластика" min="8" max="80" step="2" value={size} onChange={event=>onChange('size',Number(event.target.value))}/><output>{size}</output></label>
+    <svg className="board-stroke-preview" viewBox="0 0 230 90" aria-label="Область стирания"><circle cx="115" cy="45" r={size/2} fill="#eef5f0" stroke="#667f70" strokeWidth="1.4"/></svg>
+    <p className="board-eraser-help">{eraserMode==='partial'?'Стирает только участок под кружком.':'Удаляет весь штрих одним касанием.'}</p>
+  </> : <>
   <div className="board-colors" role="group" aria-label={highlighter?'Цвет выделителя':'Цвет'}>{colors.map(([value,label])=><button key={value} type="button" title={label} style={{'--swatch':value}} aria-label={label} aria-pressed={color===value} onClick={()=>onChange('color',value)}/>)}</div>
   <label className="board-size">Толщина <input type="range" aria-label={highlighter?'Толщина выделителя':'Толщина ручки'} min={highlighter?16:2} max={highlighter?72:12} value={size} onChange={event=>onChange('size',Number(event.target.value))}/><output>{size}</output></label>
   <svg className="board-stroke-preview" viewBox="0 0 230 54" aria-label="Образец штриха"><path d="M22 30 Q65 10 112 28 T208 25" fill="none" stroke={color} strokeWidth={highlighter?size*.5:size} strokeOpacity={highlighter ? 0.3 : 1} strokeLinecap="round"/></svg>
+  </>}
+
  </section>,document.body);
 }

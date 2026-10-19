@@ -16,6 +16,6 @@ try{for(const engine of [chromium,webkit]){const browser=await engine.launch();t
  // Clicking the paper closes the settings and draws with the chosen marker.
  await page.locator('.board-sheet-viewport').evaluate(node=>{node.scrollLeft=0;node.scrollTop=0;});const box=await paper.boundingBox(),x=box.x+box.width*.6,y=box.y+5;await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+20,y+10,{steps:5});await page.mouse.up();assert.equal(await dialog.count(),0);
  const item=await paper.locator('[data-shape-type="highlighter"]').last();assert.equal(await item.getAttribute('stroke'),'#ed94b6');assert.equal(await item.getAttribute('stroke-width'),'48');
- await pen.click();await page.getByRole('button',{name:'Ластик',exact:true}).click();assert.equal(await dialog.count(),0);assert.deepEqual(errors,[]);
+ await pen.click();await page.getByRole('button',{name:'Ластик',exact:true}).click();assert.equal(await dialog.getAttribute('aria-label'),'Настройки ластика');assert.deepEqual(errors,[]);
  console.log(`${engine.name()} ${width}: nearby popup, viewport bounds, independent settings, live width/color, keyboard/outside close, accurate marker drawing, stable sheet passed.`);await page.close();
 }}finally{await browser.close();}}}finally{await server.close();}

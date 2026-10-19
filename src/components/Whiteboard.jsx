@@ -5,7 +5,7 @@ import ImageCrop from "./board-image-crop.jsx";
 import { AttachmentViewer } from "./board-attachments.jsx";
 import { storeAsset,readAsset,blobDataUrl } from "./board-assets.js";
 import { pdfPageCount,pdfPageImage } from "./board-pdf.js";
-import { eraserPolyline, eraserHits } from "./board-eraser.js";
+import { eraserPolyline, eraserHits, cutInkPolyline, eraserCursor } from "./board-eraser.js";
 import { appendStrokePoints } from "./board-strokes.js";
 import { boardId } from "./board-id.js";
 import { clipboardImage, validBoardImage } from "./board-images.js";
@@ -106,6 +106,8 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const [size, setSize] = useState(3);
   const [highlightColor, setHighlightColor] = useState(highlightColors[0][0]);
   const [highlightSize, setHighlightSize] = useState(36);
+  const [eraserSize,setEraserSize] = useState(24);
+  const [eraserMode,setEraserMode] = useState("stroke");
   const [grid, setGrid] = useState(true);
   const [draft, setDraft] = useState(null);
   const [selectedAxesId, setSelectedAxesId] = useState(null);
@@ -530,20 +532,26 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     current.eraseLast=sweep.at(-1);
     // A constant screen radius remains easy to use when the sheet is zoomed out.
     const origin=map({clientX:0,clientY:0}),unit=map({clientX:1,clientY:0});
-    const radius=(event.pointerType==="touch" ? 18 : 12)*Math.abs(unit[0]-origin[0]);
+    const radius=current.eraserSize/2*Math.abs(unit[0]-origin[0]);
     const left=Math.min(...sweep.map(p=>p[0]))-radius,right=Math.max(...sweep.map(p=>p[0]))+radius;
     const top=Math.min(...sweep.map(p=>p[1]))-radius,bottom=Math.max(...sweep.map(p=>p[1]))+radius;
     current.eraseCandidates??=current.before.filter(item=>inkItem(item)&&!item.background&&item.page===current.item.page)
       .map(item=>({item,bounds:shapeBounds(item)}));
-    const removed=new Set();
-    current.eraseCandidates=current.eraseCandidates.filter(candidate=>{
+    const replacements=new Map(),candidates=[];
+    for(const candidate of current.eraseCandidates){
       const {item,bounds}=candidate,padding=item.size/2;
-      if(bounds.x-padding>right || bounds.x+bounds.width+padding<left || bounds.y-padding>bottom || bounds.y+bounds.height+padding<top)return true;
-      candidate.polyline??=eraserPolyline(item);
-      if(!eraserHits(candidate.polyline,sweep,radius+padding))return true;
-      removed.add(item.id);return false;
-    });
-    if(removed.size)update(itemsRef.current.filter(item=>!removed.has(item.id)));
+      if(bounds.x-padding>right || bounds.x+bounds.width+padding<left || bounds.y-padding>bottom || bounds.y+bounds.height+padding<top){candidates.push(candidate);continue;}
+      candidate.polyline??=eraserPolyline(item,current.eraserMode==="partial" ? .05 : .5);
+      if(!eraserHits(candidate.polyline,sweep,radius+padding)){candidates.push(candidate);continue;}
+      if(current.eraserMode!=="partial"){replacements.set(item.id,[]);continue;}
+      const pieces=cutInkPolyline(candidate.polyline,sweep,radius+padding);
+      if(pieces===null){candidates.push(candidate);continue;}
+      const fragments=pieces.map((points,index)=>({...item,id:index===0?item.id:boardId(),points,smoothing:0,smoothingDistance:undefined}));
+      replacements.set(item.id,fragments);
+      candidates.push(...fragments.map(fragment=>({item:fragment,bounds:shapeBounds(fragment),polyline:fragment.points})));
+    }
+    current.eraseCandidates=candidates;
+    if(replacements.size)update(itemsRef.current.flatMap(item=>replacements.get(item.id)??[item]));
   };
   const start = event => {
     if (event.button !== 0 || gesture.current || event.target.closest("[data-brand-strip]")) return;
@@ -726,7 +734,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     const map=pointMapper(event,false),origin=map({clientX:0,clientY:0}),unit=map({clientX:1,clientY:0});
     const smoothingDistance=2.25*Math.abs(unit[0]-origin[0]);
     if (tool === "axes") setSelectedAxesId(id);
-    gesture.current = { pointerId: event.pointerId, before: itemsRef.current, item: { id, page, type: tool, color: tool === "highlighter" ? highlightColor : color, size: tool === "highlighter" ? highlightSize : size, points: [point(event)], ...(tool === "pen" ? { smoothing: 2, smoothingDistance } : tool === "highlighter" ? { smoothing: 1 } : {}) } };
+    gesture.current = { pointerId: event.pointerId, before: itemsRef.current, eraserSize, eraserMode, item: { id, page, type: tool, color: tool === "highlighter" ? highlightColor : color, size: tool === "highlighter" ? highlightSize : size, points: [point(event)], ...(tool === "pen" ? { smoothing: 2, smoothingDistance } : tool === "highlighter" ? { smoothing: 1 } : {}) } };
     if (tool === "eraser") erase(event); else setDraft(gesture.current.item);
   };
   const move = event => {
@@ -864,8 +872,8 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     finally { setExporting(false); }
   };
 
-  return <main className="whiteboard" style={{"--board-zoom":zoom,"--board-view-width":viewportWidth?`${viewportWidth}px`:"100%"}}>
-    {settingsTool&&<DrawingToolSettings anchor={drawingButtons.current[settingsTool]} highlighter={settingsTool==="highlighter"} colors={settingsTool==="highlighter"?highlightColors:colors} color={activeColor} size={activeSize} onChange={editStyle} onClose={closeToolSettings}/>}
+  return <main className="whiteboard" style={{"--board-zoom":zoom,"--board-view-width":viewportWidth?`${viewportWidth}px`:"100%","--board-eraser-cursor":eraserCursor(eraserSize)}}>
+    {settingsTool&&<DrawingToolSettings eraser={settingsTool==="eraser"} eraserMode={eraserMode} onEraserMode={setEraserMode} anchor={drawingButtons.current[settingsTool]} highlighter={settingsTool==="highlighter"} colors={settingsTool==="highlighter"?highlightColors:colors} color={activeColor} size={settingsTool==="eraser"?eraserSize:activeSize} onChange={settingsTool==="eraser"?(_key,value)=>setEraserSize(value):editStyle} onClose={closeToolSettings}/>}
     <div className="board-surface">
     <header className="board-header">
       <a href={backHref} className="board-back" aria-label={backLabel}><BoardIcon name="arrow-left"/>{backLabel.replace(/^←\s*/, "")}</a>
@@ -874,7 +882,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     </header>
     <div className="board-controls">
     <div className="board-toolbar" role="toolbar" aria-label="Инструменты доски">
-      <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(value==="pen"||value==="highlighter")drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-label={label} aria-haspopup={value==="pen"||value==="highlighter"?"dialog":undefined} aria-expanded={value==="pen"||value==="highlighter"?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть ручку или выделение" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(value==="pen"||value==="highlighter" ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span></button>)}
+      <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(["pen","highlighter","eraser"].includes(value))drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-label={label} aria-haspopup={["pen","highlighter","eraser"].includes(value)?"dialog":undefined} aria-expanded={["pen","highlighter","eraser"].includes(value)?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть ручку или выделение" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(["pen","highlighter","eraser"].includes(value) ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span></button>)}
         {!studentMode&&<><button type="button" className="board-tool" aria-label="Загрузить файл" title="Загрузить файл" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><BoardIcon name="upload"/></button>
         <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/></>}
         {!studentMode&&<details ref={figuresMenu} className="board-figures">
@@ -887,7 +895,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
           </div>
         </details>}
       </div>
-      {tool!=="pen"&&tool!=="highlighter"&&<div className={`board-options ${optionsOpen ? "is-open" : ""}`} id="board-drawing-options">
+      {!["pen","highlighter","eraser"].includes(tool)&&<div className={`board-options ${optionsOpen ? "is-open" : ""}`} id="board-drawing-options">
         <div className="board-colors" role="group" aria-label={usingHighlighter ? "Цвет выделителя" : "Цвет"}>{(usingHighlighter ? highlightColors : colors).map(([value, label]) => <button key={value} type="button" style={{ "--swatch": value }} aria-label={label} aria-pressed={activeColor === value} onClick={() => editStyle("color", value)} />)}</div>
         <label className="board-size">Толщина <input type="range" aria-label={usingHighlighter ? "Толщина выделителя" : "Толщина ручки"} min={usingHighlighter ? 16 : 2} max={usingHighlighter ? 72 : 12} value={activeSize} onChange={event => editStyle("size", Number(event.target.value))} /><output>{activeSize}</output></label>
       </div>}
@@ -895,7 +903,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     </div>
     <div className="board-mobile-view" role="group" aria-label="Масштаб листа">
       <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}><BoardIcon name="minus"/></button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title="Вернуть масштаб 75%" onClick={()=>changeZoom(BOARD_DEFAULT_ZOOM)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}><BoardIcon name="plus"/></button></div>
-      {tool!=="pen"&&tool!=="highlighter"&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина <BoardIcon name={optionsOpen?"chevron-up":"chevron-down"}/></button>}
+      {!["pen","highlighter","eraser"].includes(tool)&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина <BoardIcon name={optionsOpen?"chevron-up":"chevron-down"}/></button>}
     </div>
     {tool === "select" && !groupItems.length && (selectedSolid || selectedItem?.type==="attachment") && selectedItem?.type!=="image" && (!pdfMode||selectedItem?.type==="attachment") && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
       {selectedItem?.type==="attachment" ? <button className="board-action" onClick={()=>{setFileNotice("");setOpenFile(selectedItem.id);}}>Открыть файл</button> : <>
@@ -948,7 +956,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       </div>
       </div>
     </div>
-    <footer className="board-footer"><span role="status">{status}</span><span>{tool === "select" ? "Потяните на пустом месте для выделения рамкой · двойное нажатие и перетягивание тоже выделяет область" : tool === "eraser" ? "Ластик удаляет штрих или фигуру целиком" : tool === "highlighter" ? "Проведите по записи, чтобы выделить её цветом" : tool === "axes" ? "Оси X и Y · потяните по листу; кружки по углам меняют размер" : activeFigure ? `${activeFigure[1]} · потяните по листу, чтобы нарисовать` : tool === "visualization" ? "Действия внутри 3D-окна · ладошка перемещает окно" : "Рисуйте мышью, пальцем или стилусом"}</span></footer>
+    <footer className="board-footer"><span role="status">{status}</span><span>{tool === "select" ? "Потяните на пустом месте для выделения рамкой · двойное нажатие и перетягивание тоже выделяет область" : tool === "eraser" ? (eraserMode==="partial"?"Стирает участок под кружком · настройки по кнопке ластика":"Стирает штрих целиком · настройки по кнопке ластика") : tool === "highlighter" ? "Проведите по записи, чтобы выделить её цветом" : tool === "axes" ? "Оси X и Y · потяните по листу; кружки по углам меняют размер" : activeFigure ? `${activeFigure[1]} · потяните по листу, чтобы нарисовать` : tool === "visualization" ? "Действия внутри 3D-окна · ладошка перемещает окно" : "Рисуйте мышью, пальцем или стилусом"}</span></footer>
     </div>
     {fileNotice && <div className="board-file-notice" role="status"><span>{fileNotice}</span>{!fileBusy&&!expanding&&<button aria-label="Закрыть сообщение" onClick={()=>setFileNotice("")}><BoardIcon name="close"/></button>}</div>}
     {cropId&&items.find(item=>item.id===cropId&&item.type==="image")&&<ImageCrop key={cropId} item={items.find(item=>item.id===cropId)} onApply={applyImageCrop} onClose={()=>setCropId(null)}/>}
