@@ -400,3 +400,9 @@
   .board-tools { align-items:center; gap:4px; }
   .board-tools > .board-figures { width:44px; }
 }
+
+/* An eraser stroke passes through screenshots, files and geometry to reach ink. */
+.board-paper.is-erasing [data-shape-type]:not([data-shape-type="pen"]):not([data-shape-type="highlighter"]),
+.board-paper.is-erasing [data-shape-type]:not([data-shape-type="pen"]):not([data-shape-type="highlighter"]) * {
+  pointer-events:none !important;
+}
