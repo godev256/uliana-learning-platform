@@ -389,3 +389,14 @@
 @media(max-width:1024px),(any-pointer:coarse){
  .board-figures-chevron.board-icon { display:none; }
 }
+
+/* Icon-only primary tools; keep full labels inside the figures menu. */
+.board-tools > .board-tool,
+.board-tools > .board-figures > summary.board-tool {
+  width:44px; height:44px; min-height:44px; padding:0;
+  flex:0 0 44px; flex-direction:row; justify-content:center; gap:0;
+}
+@media(max-width:1024px),(any-pointer:coarse){
+  .board-tools { align-items:center; gap:4px; }
+  .board-tools > .board-figures { width:44px; }
+}

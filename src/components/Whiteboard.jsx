@@ -5,6 +5,7 @@ import ImageCrop from "./board-image-crop.jsx";
 import { AttachmentViewer } from "./board-attachments.jsx";
 import { storeAsset,readAsset,blobDataUrl } from "./board-assets.js";
 import { pdfPageCount,pdfPageImage } from "./board-pdf.js";
+import { appendStrokePoints } from "./board-strokes.js";
 import { boardId } from "./board-id.js";
 import { clipboardImage, validBoardImage } from "./board-images.js";
 import { flushSync } from "react-dom";
@@ -117,6 +118,14 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const [pointCoordinates,setPointCoordinates] = useState(["0","0","0"]);
   const [renameError,setRenameError] = useState("");
   const gesture = useRef(null);
+  const strokeFrame = useRef(null);
+  const cancelStrokeFrame = () => {
+    if (strokeFrame.current !== null) cancelAnimationFrame(strokeFrame.current);
+    strokeFrame.current = null;
+  };
+  useEffect(() => () => {
+    if (strokeFrame.current !== null) cancelAnimationFrame(strokeFrame.current);
+  }, []);
   const [optionsOpen,setOptionsOpen] = useState(false);
   const [settingsTool,setSettingsTool]=useState(null);
   const drawingButtons=useRef({});
@@ -127,6 +136,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       onNotebookPreview?.({items:gesture.current.before,pageCount:pageCountRef.current});
       update(gesture.current.before);
     }
+    cancelStrokeFrame();
     gesture.current = null; lastSelectionPress.current=null; setDraft(null); setGroupDraft(null); setMarquee(null); setLineStarts({}); setPlaneStarts({});
   });
   const sheets = useRef([]);
@@ -406,7 +416,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     finally{setExpanding("");}
   };
 
-  const point = event => {
+  const pointMapper = event => {
     // Read the current viewport bounds: SVG screen matrices can lag behind scrolling.
     const element = event.currentTarget;
     const bounds = element.getBoundingClientRect();
@@ -420,9 +430,20 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     const width = bounds.width - left - right;
     const height = bounds.height - top - bottom;
     const scale = Math.min(width / PAGE_WIDTH, height / PAGE_HEIGHT);
-    const x = (event.clientX - bounds.left - left - (width - PAGE_WIDTH * scale) / 2) / scale;
-    const y = (event.clientY - bounds.top - top - (height - PAGE_HEIGHT * scale) / 2) / scale;
-    return [Math.max(0, Math.min(DRAW_WIDTH, x)), Math.max(0, Math.min(PAGE_HEIGHT, y))];
+    return sample => {
+      const x = (sample.clientX - bounds.left - left - (width - PAGE_WIDTH * scale) / 2) / scale;
+      const y = (sample.clientY - bounds.top - top - (height - PAGE_HEIGHT * scale) / 2) / scale;
+      return [Math.max(0, Math.min(DRAW_WIDTH, x)), Math.max(0, Math.min(PAGE_HEIGHT, y))];
+    };
+  };
+  const point = event => pointMapper(event)(event);
+  const sampleStroke = (event, current) => {
+    const map = pointMapper(event);
+    const native = event.nativeEvent ?? event;
+    const samples = native.getCoalescedEvents?.() ?? [];
+    // Include the dispatched event: some browsers omit its final position.
+    const points = appendStrokePoints(current.item.points, [...samples, event].map(map));
+    if (points !== current.item.points) current.item = { ...current.item, points };
   };
   const erase = event => {
     const hit = document.elementFromPoint(event.clientX, event.clientY);
@@ -613,7 +634,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     }
     const id = boardId();
     if (tool === "axes") setSelectedAxesId(id);
-    gesture.current = { pointerId: event.pointerId, before: itemsRef.current, item: { id, page, type: tool, color: tool === "highlighter" ? highlightColor : color, size: tool === "highlighter" ? highlightSize : size, points: [point(event)] } };
+    gesture.current = { pointerId: event.pointerId, before: itemsRef.current, item: { id, page, type: tool, color: tool === "highlighter" ? highlightColor : color, size: tool === "highlighter" ? highlightSize : size, points: [point(event)], ...(["pen", "highlighter"].includes(tool) ? { smoothing: 1 } : {}) } };
     if (tool === "eraser") erase(event); else setDraft(gesture.current.item);
   };
   const move = event => {
@@ -633,6 +654,15 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     if (current.item.type === "eraser") { erase(event); return; }
     if (current.mode === "mark" || current.mode === "rename") {
       if (Math.hypot(event.clientX-current.clientStart[0],event.clientY-current.clientStart[1])>10) { current.cancelled = true; setDraft(null); }
+      return;
+    }
+    if (!current.mode && current.resizeHandle === undefined && ["pen", "highlighter"].includes(current.item.type)) {
+      sampleStroke(event, current);
+      // Keep every input sample, but render at the display's refresh rate.
+      if (strokeFrame.current === null) strokeFrame.current = requestAnimationFrame(() => {
+        strokeFrame.current = null;
+        if (gesture.current === current) setDraft(current.item);
+      });
       return;
     }
     const next = point(event);
@@ -661,6 +691,8 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     endPan(event);
     const current = gesture.current;
     if (!current || current.pointerId !== event.pointerId) return;
+    cancelStrokeFrame();
+    if (event.type !== "pointercancel" && !current.mode && current.resizeHandle === undefined && ["pen", "highlighter"].includes(current.item.type)) sampleStroke(event, current);
     gesture.current = null; setDraft(null);
     if (event.type === "pointercancel") { onNotebookPreview?.({items:current.before,pageCount:pageCountRef.current}); update(current.before);setMarquee(null);setGroupDraft(null);return; }
     if(current.mode==="marquee"){
@@ -749,11 +781,11 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     </header>
     <div className="board-controls">
     <div className="board-toolbar" role="toolbar" aria-label="Инструменты доски">
-      <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(value==="pen"||value==="highlighter")drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-haspopup={value==="pen"||value==="highlighter"?"dialog":undefined} aria-expanded={value==="pen"||value==="highlighter"?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть штрих или фигуру целиком" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(value==="pen"||value==="highlighter" ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span>{label}</button>)}
-        {!studentMode&&<><button type="button" className="board-tool" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><BoardIcon name="upload"/>Загрузить файл</button>
+      <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(value==="pen"||value==="highlighter")drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-label={label} aria-haspopup={value==="pen"||value==="highlighter"?"dialog":undefined} aria-expanded={value==="pen"||value==="highlighter"?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть штрих или фигуру целиком" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(value==="pen"||value==="highlighter" ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span></button>)}
+        {!studentMode&&<><button type="button" className="board-tool" aria-label="Загрузить файл" title="Загрузить файл" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><BoardIcon name="upload"/></button>
         <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/></>}
         {!studentMode&&<details ref={figuresMenu} className="board-figures">
-          <summary className={`board-tool ${activeFigure ? "is-active" : ""}`} aria-label="Фигуры"><BoardIcon name="figures"/>Фигуры <BoardIcon name="chevron-down" className="board-figures-chevron"/></summary>
+          <summary className={`board-tool ${activeFigure ? "is-active" : ""}`} aria-label="Фигуры" title="Фигуры"><BoardIcon name="figures"/></summary>
           <div className="board-figures-panel" role="group" aria-label="Фигуры">
             {figureGroups.filter(group=>!pdfMode||!group.figures.some(([value])=>isVisualization(value))).map(group => <div className="board-figure-group" role="group" aria-label={group.title} key={group.title}>
               <h2>{group.title}</h2>

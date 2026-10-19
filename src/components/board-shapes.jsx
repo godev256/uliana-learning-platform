@@ -1,3 +1,5 @@
+import { memo, useMemo } from "react";
+import { strokePath } from "./board-strokes.js";
 import { AssetImage,FileCard } from "./board-attachments.jsx";
 import { isSolid, isVisualization, solidType, projectSolid } from "./board-solids.js";
 
@@ -37,16 +39,20 @@ export function shapeBounds(item) {
     last = [first[0] + Math.sign(last[0] - first[0]) * width, first[1] + Math.sign(last[1] - first[1]) * width * Math.sqrt(3) / 2];
   }
   if (item.type === "pen" || item.type === "highlighter") {
-    const xs = item.points.map(p => p[0]), ys = item.points.map(p => p[1]);
-    const x = Math.min(...xs), y = Math.min(...ys);
-    return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+    let x = Infinity, y = Infinity, right = -Infinity, bottom = -Infinity;
+    for (const [px, py] of item.points) {
+      x = Math.min(x, px); y = Math.min(y, py);
+      right = Math.max(right, px); bottom = Math.max(bottom, py);
+    }
+    return { x, y, width: right - x, height: bottom - y };
   }
   return { x: Math.min(first[0], last[0]), y: Math.min(first[1], last[1]), width: Math.abs(last[0] - first[0]), height: Math.abs(last[1] - first[1]) };
 }
 
-export function BoardShape({ item, erase = false, preview = false, selectable = false, visualization = {},onFileOpen }) {
+function BoardShapeContent({ item, erase = false, preview = false, selectable = false, visualization = {},onFileOpen }) {
   const first = item.points[0], last = item.points.at(-1);
-  const { x, y, width, height } = shapeBounds(item);
+  const freehand = item.type === "pen" || item.type === "highlighter";
+  const { x, y, width, height } = freehand ? {} : shapeBounds(item);
   const props = { stroke: item.color, strokeWidth: item.size, opacity: item.type === "highlighter" ? 0.3 : undefined, fill: "none", strokeLinecap: "round", strokeLinejoin: "round", "data-shape-id": preview ? undefined : item.id, "data-shape-type": preview ? undefined : item.type, pointerEvents: erase || selectable ? "stroke" : "none" };
   if(item.type==="image"&&item.crop)return <svg data-shape-id={item.id} data-shape-type="image" x={x} y={y} width={width} height={height} viewBox={`${item.crop.x} ${item.crop.y} ${item.crop.width} ${item.crop.height}`} preserveAspectRatio="none" overflow="hidden" pointerEvents={erase?"all":"none"}><AssetImage assetId={item.assetId} src={item.src} width="1" height="1" preserveAspectRatio="none"/></svg>;
   if (item.type === "image") return <AssetImage assetId={item.assetId} src={item.src} data-shape-id={item.id} data-shape-type="image" x={x} y={y} width={width} height={height} preserveAspectRatio="xMidYMid meet" pointerEvents={erase ? "all" : "none"} />;
@@ -84,8 +90,18 @@ export function BoardShape({ item, erase = false, preview = false, selectable = 
     </g>;
   }
   if (item.type === "line") return <line {...props} x1={first[0]} y1={first[1]} x2={last[0]} y2={last[1]} />;
-  return <path {...props} d={item.points.length === 1 ? `M${first} l0.01,0` : item.points.map((p, i) => `${i ? "L" : "M"}${p}`).join(" ")} />;
+  return <InkPath item={item} pathProps={props} />;
 }
+
+function InkPath({ item, pathProps }) {
+  const d = useMemo(() => strokePath(item.points, item.smoothing), [item.points, item.smoothing]);
+  return <path {...pathProps} d={d} />;
+}
+
+// Committed ink does not change while another stroke is being drawn.
+export const BoardShape = memo(BoardShapeContent, (previous, next) =>
+  ["pen", "highlighter"].includes(next.item.type) && previous.item === next.item &&
+  previous.erase === next.erase && previous.preview === next.preview && previous.selectable === next.selectable);
 
 export function FigureIcon({ type }) {
   if (type==="viz-space") return <svg className="board-figure-icon" viewBox="0 0 100 80" aria-hidden="true"><path d="M12 60 H90 M45 70 V8 M45 60 L77 22" fill="none" stroke="currentColor" strokeWidth="3"/><text x="82" y="53" fontSize="18" fill="currentColor">x</text><text x="28" y="18" fontSize="18" fill="currentColor">z</text></svg>;
