@@ -36,7 +36,7 @@ const typingTarget = target => !!target.closest?.("textarea, select, input:not([
 const inkItem = item => item && ["pen", "highlighter"].includes(item.type);
 const colors = [["#212123", "Чёрный"], ["#2f493f", "Зелёный"], ["#3058a0", "Синий"], ["#b24838", "Красный"]];
 
-const highlightColors = [["#f2d34f", "Жёлтый"], ["#83c98b", "Салатовый"], ["#76bce8", "Голубой"], ["#ed94b6", "Розовый"], ["#b79ade", "Сиреневый"]];
+const highlightColors = [["#83c98b", "Салатовый"], ["#f2d34f", "Жёлтый"], ["#76bce8", "Голубой"], ["#ed94b6", "Розовый"], ["#b79ade", "Сиреневый"]];
 
 function constructionTarget(hit) {
   const target=hit?.closest("[data-free-point-id], [data-intersection-point-id], [data-edge-point-id], [data-spatial-line-id], [data-spatial-plane-id]");
