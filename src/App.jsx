@@ -1498,17 +1498,17 @@ function App() {
               <source
                 type="image/avif"
                 srcSet="/hero-640.avif 640w, /hero-960.avif 960w, /hero-1254.avif 1254w"
-                sizes="(min-width: 1024px) 360px, 280px"
+                sizes="(min-width: 1024px) 480px, 320px"
               />
               <source
                 type="image/webp"
                 srcSet="/hero-640.webp 640w, /hero-960.webp 960w, /hero-1254.webp 1254w"
-                sizes="(min-width: 1024px) 360px, 280px"
+                sizes="(min-width: 1024px) 480px, 320px"
               />
               <img
                 src="/hero-960.jpg"
                 srcSet="/hero-640.jpg 640w, /hero-960.jpg 960w, /hero-1254.jpg 1254w"
-                sizes="(min-width: 1024px) 360px, 280px"
+                sizes="(min-width: 1024px) 480px, 320px"
                 width="1254"
                 height="1254"
                 fetchPriority="high"

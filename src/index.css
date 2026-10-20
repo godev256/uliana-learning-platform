@@ -427,8 +427,8 @@ select.field-input {
 .site-cabinet-link .board-icon { width:16px; height:16px; }
 .site-header .site-menu { position:relative; top:auto; right:auto; z-index:40; }
 .site-header .site-menu-toggle { border-radius:8px; }
-.home-hero { grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr); gap:clamp(36px,5vw,72px); max-width:1240px; margin:0 auto; padding:32px 43px 0; align-items:center; }
-.home-hero-photo { width:100%; max-width:360px; justify-self:center; border-radius:16px; }
+.home-hero { grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:clamp(36px,5vw,72px); max-width:1240px; margin:0 auto; padding:32px 43px 0; align-items:center; }
+.home-hero-photo { width:100%; max-width:480px; justify-self:center; border-radius:16px; }
 .home-hero-content { min-width:0; }
 .home-hero-copy { padding:28px 0; gap:24px; }
 .home-hero-eyebrow { font-size:12px; line-height:1.4; color:#667f70; }
@@ -440,7 +440,7 @@ select.field-input {
  .site-header-nav { display:none; }
  .site-header-actions { margin-left:auto; }
  .home-hero { grid-template-columns:minmax(0,1fr); padding:24px 24px 0; gap:24px; }
- .home-hero-photo { order:2; max-width:280px; aspect-ratio:1; }
+ .home-hero-photo { order:2; max-width:320px; aspect-ratio:1; }
  .home-hero-photo img { object-position:center 35%; }
  .home-hero-content { order:1; }
  .home-hero-copy { padding:8px 0; }
