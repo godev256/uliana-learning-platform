@@ -59,7 +59,10 @@ jobs:
           docker run -d --name web-smoke -p 127.0.0.1:18084:80 \
             -e APP_DOMAIN=http://localhost -e API_DOMAIN=http://api.localhost ulianaa-web:check
           trap 'docker rm -f web-smoke >/dev/null 2>&1 || true' EXIT
-          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 -H 'Host: localhost' http://127.0.0.1:18084/board >/dev/null
+          if ! curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 1 --max-time 5 -H 'Host: localhost' http://127.0.0.1:18084/board >/dev/null; then
+            docker logs web-smoke
+            exit 1
+          fi
           for path in /.env /.git/config /wp-login.php; do
             test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: localhost' "http://127.0.0.1:18084$path")" = 403
           done
