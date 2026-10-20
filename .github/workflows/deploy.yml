@@ -54,6 +54,15 @@ jobs:
           docker build -t ulianaa-api:check backend-go
           docker build -t ulianaa-web:check .
           APP_DOMAIN=ulianaa-learning.pro API_DOMAIN=api.ulianaa-learning.pro docker run --rm -e APP_DOMAIN -e API_DOMAIN ulianaa-web:check caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Smoke-test Caddy routing and bot-probe rejection
+        run: |
+          docker run -d --name web-smoke -p 127.0.0.1:18084:80 \
+            -e APP_DOMAIN=http://localhost -e API_DOMAIN=http://api.localhost ulianaa-web:check
+          trap 'docker rm -f web-smoke >/dev/null 2>&1 || true' EXIT
+          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 -H 'Host: localhost' http://127.0.0.1:18084/board >/dev/null
+          for path in /.env /.git/config /wp-login.php; do
+            test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: localhost' "http://127.0.0.1:18084$path")" = 403
+          done
       - name: Smoke-test the locked-down API container
         run: |
           docker run -d --name api-smoke --network host --read-only --tmpfs /tmp:size=16m,noexec,nosuid --cap-drop ALL --security-opt no-new-privileges \

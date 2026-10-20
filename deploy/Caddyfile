@@ -20,7 +20,9 @@
     format json
   }
   @probe path /.env /.env.* /.git/* /wp-login.php /wp-admin* /xmlrpc.php /phpmyadmin* /vendor/phpunit* /actuator/*
-  respond @probe 403
+  handle @probe {
+    respond 403
+  }
 }
 {$APP_DOMAIN} {
   import common
