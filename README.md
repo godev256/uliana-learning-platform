@@ -332,7 +332,7 @@ Ctrl+wheel-события тачпада и gesture-события Safari. На 
 
 ## Локальный Go backend
 
-Отдельный локальный репозиторий находится в `backend-go/` и исключён из Git frontend.
+Go backend находится в `backend-go/` и входит в общий репозиторий проекта.
 Инструкции — `backend-go/README.md`. Для подключения этого React к Go:
 
 ```sh
@@ -341,5 +341,7 @@ Ctrl+wheel-события тачпада и gesture-события Safari. На 
 
 В этом режиме `/board` открывает личные доски вошедшего пользователя с хранением
 в PostgreSQL, `/cabinet` использует тот же Go API. Обычный `npm run dev` и сборка
-Vercel сохраняют прежнее поведение. Для будущего собственного сервера frontend
-нужно собирать с `VITE_GO_BACKEND=true`.
+Vercel сохраняют прежнее поведение. Production Docker-образ собирается с `VITE_GO_BACKEND=true`.
+
+Настройка сервера, GHCR, GitHub Actions, SSL и резервного копирования описана
+в [deploy/README.md](deploy/README.md).

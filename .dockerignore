@@ -1,0 +1,13 @@
+.git
+.local
+node_modules
+dist
+.env
+.env.*
+playwright-report
+output
+tmp
+backend-go/.local
+backend-go/.env
+backend-go/.env.*
+backend-go/bin

@@ -14,5 +14,4 @@ playwright-report/
 output/
 tmp/
 
-# Independent local Go backend repository
-/backend-go/
+# Private backend snapshots and runtime data remain excluded by backend-go/.gitignore

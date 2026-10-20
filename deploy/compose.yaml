@@ -1,0 +1,89 @@
+name: ulianaa-learning
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ulianaa
+      POSTGRES_DB: ulianaa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U ulianaa -d ulianaa']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt: [no-new-privileges:true]
+    logging: *logging
+  api:
+    image: ghcr.io/godev256/uliana-learning-api:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HTTP_ADDR: 0.0.0.0:8081
+      DATABASE_URL: postgres://ulianaa:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/ulianaa?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      JWT_ISSUER: ulianaa-learning.pro
+      JWT_AUDIENCE: ulianaa-learning.pro.frontend
+      JWT_TTL: 8h
+      ALLOWED_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN},https://${API_DOMAIN:?Set API_DOMAIN}
+      COOKIE_SECURE: 'true'
+      ALLOW_LOCAL_SETUP: 'false'
+      TRUSTED_PROXY_CIDRS: 172.30.50.10/32
+    networks:
+      edge:
+        ipv4_address: 172.30.50.20
+      database: {}
+    read_only: true
+    tmpfs: [/tmp:size=16m,noexec,nosuid]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8081/readyz']
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    logging: *logging
+  caddy:
+    image: ghcr.io/godev256/uliana-learning-web:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - /var/log/ulianaa:/var/log/caddy
+    networks:
+      edge:
+        ipv4_address: 172.30.50.10
+    security_opt: [no-new-privileges:true]
+    logging: *logging
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.50.0/24
+  database:
+    internal: true

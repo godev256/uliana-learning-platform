@@ -1,0 +1,52 @@
+{
+  acme_ca https://acme-v02.api.letsencrypt.org/directory
+  admin localhost:2019
+}
+(common) {
+  encode zstd gzip
+  header {
+    X-Content-Type-Options nosniff
+    Referrer-Policy strict-origin-when-cross-origin
+    X-Frame-Options SAMEORIGIN
+    Strict-Transport-Security "max-age=31536000"
+    -Server
+  }
+  log {
+    output file /var/log/caddy/access.json {
+      roll_size 10MiB
+      roll_keep 5
+      roll_keep_for 168h
+    }
+    format json
+  }
+  @probe path /.env /.env.* /.git/* /wp-login.php /wp-admin* /xmlrpc.php /phpmyadmin* /vendor/phpunit* /actuator/*
+  respond @probe 403
+}
+{$APP_DOMAIN} {
+  import common
+  @backend path /api/* /healthz /readyz
+  handle @backend {
+    reverse_proxy api:8081 {
+      header_up X-Real-IP {remote_host}
+    }
+  }
+  handle {
+    root * /srv
+    @assets path /assets/* /pdf-assets/* /images/* /fonts/*
+    header @assets Cache-Control "public, max-age=604800"
+    try_files {path} /index.html
+    file_server
+  }
+}
+{$API_DOMAIN} {
+  import common
+  @backend path /api/* /healthz /readyz
+  handle @backend {
+    reverse_proxy api:8081 {
+      header_up X-Real-IP {remote_host}
+    }
+  }
+  handle {
+    respond 404
+  }
+}
