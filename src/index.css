@@ -473,7 +473,18 @@ select.field-input {
  .home-hero-proof dd > span:last-child { margin-top:6px; font-size:12px; line-height:1.5; }
  #main-content > section:not(#start) { padding-bottom:48px; }
  #about { padding-top:44px; }
- #method article,#format article { padding:20px; }
+ .home-method-grid,.home-format-grid { gap:10px; margin-top:22px; }
+ #method .method-card,#format .format-card { padding:16px; }
+ .method-card { display:grid; grid-template-columns:30px minmax(0,1fr); gap:10px 12px; }
+ .method-card-marker { grid-column:1; grid-row:1; margin:0; align-self:center; }
+ .method-card-number { width:30px; height:30px; font-size:10px; }
+ .method-card .method-card-connector { display:none; }
+ .method-card-title { grid-column:2; align-self:center; font-size:18px; line-height:1.35; }
+ .method-card-copy { grid-column:1/-1; margin:0; font-size:14px; line-height:1.6; }
+ .format-card-label { padding:0; margin-bottom:10px; border:0; border-radius:0; font-size:10px; line-height:1.4; }
+ .format-card h3 { font-size:18px; line-height:1.35; }
+ .format-card p { margin-top:10px; font-size:14px; line-height:1.6; }
+ #method > div:last-child,#format > div:last-child { margin-top:22px; }
 }
 @media(max-width:380px){
  .site-header { flex-wrap:nowrap; padding:12px 14px; gap:8px; }

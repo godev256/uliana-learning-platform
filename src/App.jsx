@@ -1656,28 +1656,28 @@ function App() {
             />
           </motion.div>
 
-          <div className="mt-34 sm:mt-63 grid gap-18 md:grid-cols-2 xl:grid-cols-3">
+          <div className="home-method-grid mt-34 sm:mt-63 grid gap-18 md:grid-cols-2 xl:grid-cols-3">
             {roadmapSteps.map((step, index) => (
               <Card
                 key={step.number}
-                className="relative overflow-hidden"
+                className="method-card relative overflow-hidden"
                 {...cardMotion(shouldReduceMotion, index)}
               >
                 <span
                   className="absolute inset-x-0 top-0 h-4 bg-sage"
                   aria-hidden="true"
                 />
-                <span className="mb-23 sm:mb-34 flex items-center gap-18">
+                <span className="method-card-marker mb-23 sm:mb-34 flex items-center gap-18">
                   {/* sage-dark, а не sage: белое на #667f70 даёт 4.34:1 и не проходит AA. */}
-                  <span className="display flex h-[38px] w-[38px] items-center justify-center rounded-full bg-sage-dark text-caption leading-caption tracking-caption text-bone">
+                  <span className="method-card-number display flex h-[38px] w-[38px] items-center justify-center rounded-full bg-sage-dark text-caption leading-caption tracking-caption text-bone">
                     {step.number}
                   </span>
-                  <span className="h-px flex-1 bg-sage/25" aria-hidden="true" />
+                  <span className="method-card-connector h-px flex-1 bg-sage/25" aria-hidden="true" />
                 </span>
-                <h3 className="display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
+                <h3 className="method-card-title display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
                   {step.title}
                 </h3>
-                <p className="mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">
+                <p className="method-card-copy mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">
                   {step.copy}
                 </p>
               </Card>
@@ -1701,10 +1701,10 @@ function App() {
             />
           </motion.div>
 
-          <div className="mt-34 sm:mt-63 grid gap-18 md:grid-cols-2 xl:grid-cols-3">
+          <div className="home-format-grid mt-34 sm:mt-63 grid gap-18 md:grid-cols-2 xl:grid-cols-3">
             {formatCards.map((card, index) => (
-              <Card key={card.title} {...cardMotion(shouldReduceMotion, index)}>
-                <span className="micro-label mb-23 sm:mb-34 inline-flex rounded-full border border-clay-light/60 px-14 py-11 text-clay">
+              <Card className="format-card" key={card.title} {...cardMotion(shouldReduceMotion, index)}>
+                <span className="format-card-label micro-label mb-23 sm:mb-34 inline-flex rounded-full border border-clay-light/60 px-14 py-11 text-clay">
                   {card.label}
                 </span>
                 <h3 className="display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
