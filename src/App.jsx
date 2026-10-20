@@ -87,66 +87,66 @@ const aboutFacts = [
 const roadmapSteps = [
   {
     number: "01",
-    title: "Задание под свой уровень",
-    copy: "Перед диагностикой — небольшое задание под уровень и цель ученика.",
+    title: "ИНДИВИДУАЛЬНОЕ ЗАДАНИЕ",
+    copy: "Перед диагностикой ребёнок получает небольшое задание под свой уровень и цель.",
   },
   {
     number: "02",
-    title: "Бесплатная диагностика",
-    copy: "Знакомимся, разбираем ошибки и определяем, что нужно подтянуть.",
+    title: "БЕСПЛАТНАЯ ДИАГНОСТИКА",
+    copy: "На встрече знакомимся, разбираем ошибки в задании и видим, где нужна опора.",
   },
   {
     number: "03",
-    title: "Личный план",
-    copy: "Выбираем темы, темп, домашнюю работу и ближайшую цель.",
+    title: "ПЛАН ДЕЙСТВИЙ",
+    copy: "Исходя из ошибок строим маршрут: темы, темп, домашняя работа и ближайшая цель.",
   },
   {
     number: "04",
-    title: "Уроки и практика",
-    copy: "Закрепляем базу: алгоритмы, самостоятельные решения и оформление.",
+    title: "ПЕРВЫЕ УРОКИ",
+    copy: "Собираем базу: понятные алгоритмы, самостоятельные решения и аккуратное оформление.",
   },
   {
     number: "05",
-    title: "Обратная связь родителю",
-    copy: "Раз в месяц — подробный отчёт о прогрессе, следующих шагах и рекомендации для занятий дома.",
+    title: "ОБРАТНАЯ СВЯЗЬ РОДИТЕЛЮ",
+    copy: "Раз в месяц отправляю родителю подробный отчёт: что прошли, как меняется уровень, над чем работаем дальше и что стоит поддержать дома. Родитель видит прогресс и мои рекомендации.",
   },
   {
     number: "06",
-    title: "Подготовка к экзамену",
-    copy: "Пишем пробники, корректируем план и отрабатываем стратегию экзамена.",
+    title: "ЭКЗАМЕН",
+    copy: "Через пробные экзамены, корректировку плана и экзаменационную стратегию идём к хорошему результату.",
   },
 ];
 
 const formatCards = [
   {
     label: "ГДЕ",
-    title: "Онлайн на общей доске",
-    copy: "Пишем и решаем задачи вместе, как за одним столом.",
+    title: "ОНЛАЙН, НА ИНТЕРАКТИВНОЙ ДОСКЕ",
+    copy: "Все занятия проходят на платформе с общей доской: мы пишем и решаем на ней вместе, как за одним столом.",
   },
   {
     label: "МАТЕРИАЛЫ",
-    title: "Материалы остаются в кабинете",
-    copy: "Схемы, разборы и алгоритмы доступны ученику после урока.",
+    title: "КОНСПЕКТЫ ОСТАЮТСЯ НА ПЛАТФОРМЕ",
+    copy: "Схемы, разборы и опорные алгоритмы хранятся там же. Ученик в любой момент открывает нужный урок и возвращается к нему.",
   },
   {
     label: "ДЛИТЕЛЬНОСТЬ",
-    title: "60 минут",
-    copy: "На разбор темы и практику",
+    title: "60 МИНУТ",
+    copy: "Часа хватает на разбор, практику и фиксацию следующего шага.",
   },
   {
     label: "КЛАССЫ",
-    title: "7–11 класс",
-    copy: "Школьная программа, ОГЭ и ЕГЭ",
+    title: "С 7 ПО 11",
+    copy: "Школьная программа, ОГЭ в 9 классе, профильная или базовая математика в 10-11 классах.",
   },
   {
     label: "ДОМАШНЯЯ РАБОТА",
-    title: "Домашняя работа по теме",
-    copy: "Понятное задание без случайных задач и лишней нагрузки.",
+    title: "ЧЁТКОЕ ЗАДАНИЕ",
+    copy: "После урока остаётся понятная домашняя работа без случайных задач и лишней нагрузки.",
   },
   {
     label: "КОНТРОЛЬ",
-    title: "Разбираем ошибки",
-    copy: "Каждую ошибку превращаем в правило и новый навык.",
+    title: "РАЗБОР ОШИБОК",
+    copy: "Ошибки не копятся: каждую превращаем в проверочное правило и следующий навык.",
   },
 ];
 
@@ -1498,17 +1498,17 @@ function App() {
               <source
                 type="image/avif"
                 srcSet="/hero-640.avif 640w, /hero-960.avif 960w, /hero-1254.avif 1254w"
-                sizes="(min-width: 1024px) 480px, 320px"
+                sizes="(min-width: 1024px) 50vw, 100vw"
               />
               <source
                 type="image/webp"
                 srcSet="/hero-640.webp 640w, /hero-960.webp 960w, /hero-1254.webp 1254w"
-                sizes="(min-width: 1024px) 480px, 320px"
+                sizes="(min-width: 1024px) 50vw, 100vw"
               />
               <img
                 src="/hero-960.jpg"
                 srcSet="/hero-640.jpg 640w, /hero-960.jpg 960w, /hero-1254.jpg 1254w"
-                sizes="(min-width: 1024px) 480px, 320px"
+                sizes="(min-width: 1024px) 50vw, 100vw"
                 width="1254"
                 height="1254"
                 fetchPriority="high"
@@ -1643,44 +1643,81 @@ function App() {
         </section>
 
         {/* ── МЕТОД ──────────────────────────────────────────────── */}
-        <section id="method" className="compact-home-section" aria-labelledby="method-title">
-          <div className="compact-section-layout">
-            <motion.div className="compact-section-intro" {...reveal}>
-              <SectionIntro titleId="method-title" eyebrow="МЕТОДИКА" title="От знакомства до экзамена" />
-            </motion.div>
-            <motion.ol className="method-timeline" {...reveal}>
-              {roadmapSteps.map(step => (
-                <li key={step.number}>
-                  <article>
-                    <span className="method-step-number" aria-hidden="true">{step.number}</span>
-                    <div><h3>{step.title}</h3><p>{step.copy}</p></div>
-                  </article>
-                </li>
-              ))}
-            </motion.ol>
+        <section
+          id="method"
+          className="px-23 pb-63 sm:pb-96 sm:px-34 lg:px-63"
+          aria-labelledby="method-title"
+        >
+          <motion.div {...reveal}>
+            <SectionIntro
+              titleId="method-title"
+              eyebrow="МЕТОДИКА"
+              title="Дорожная карта от знакомства до экзамена"
+            />
+          </motion.div>
+
+          <div className="mt-34 sm:mt-63 grid gap-18 md:grid-cols-2 xl:grid-cols-3">
+            {roadmapSteps.map((step, index) => (
+              <Card
+                key={step.number}
+                className="relative overflow-hidden"
+                {...cardMotion(shouldReduceMotion, index)}
+              >
+                <span
+                  className="absolute inset-x-0 top-0 h-4 bg-sage"
+                  aria-hidden="true"
+                />
+                <span className="mb-23 sm:mb-34 flex items-center gap-18">
+                  {/* sage-dark, а не sage: белое на #667f70 даёт 4.34:1 и не проходит AA. */}
+                  <span className="display flex h-[38px] w-[38px] items-center justify-center rounded-full bg-sage-dark text-caption leading-caption tracking-caption text-bone">
+                    {step.number}
+                  </span>
+                  <span className="h-px flex-1 bg-sage/25" aria-hidden="true" />
+                </span>
+                <h3 className="display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
+                  {step.title}
+                </h3>
+                <p className="mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">
+                  {step.copy}
+                </p>
+              </Card>
+            ))}
           </div>
+
+          <SectionCta />
         </section>
 
         {/* ── ФОРМАТ ─────────────────────────────────────────────── */}
-        <section id="format" className="compact-home-section" aria-labelledby="format-title">
-          <div className="compact-section-layout">
-            <motion.div className="compact-section-intro" {...reveal}>
-              <SectionIntro titleId="format-title" eyebrow="ФОРМАТ" title="Как устроены занятия" />
-            </motion.div>
-            <motion.div className="lesson-format" {...reveal}>
-              <dl className="lesson-format-overview">
-                {formatCards.filter(card=>['ДЛИТЕЛЬНОСТЬ','КЛАССЫ'].includes(card.label)).map(card=>(
-                  <div key={card.label}><dt>{card.title}</dt><dd>{card.copy}</dd></div>
-                ))}
-              </dl>
-              <dl className="lesson-format-details">
-                {formatCards.filter(card=>!['ДЛИТЕЛЬНОСТЬ','КЛАССЫ'].includes(card.label)).map(card=>(
-                  <div key={card.label}><dt>{card.label}</dt><dd><h3>{card.title}</h3><p>{card.copy}</p></dd></div>
-                ))}
-              </dl>
-              <SectionCta />
-            </motion.div>
+        <section
+          id="format"
+          className="px-23 pb-63 sm:pb-96 sm:px-34 lg:px-63"
+          aria-labelledby="format-title"
+        >
+          <motion.div {...reveal}>
+            <SectionIntro
+              titleId="format-title"
+              eyebrow="ФОРМАТ"
+              title="Как устроены занятия"
+            />
+          </motion.div>
+
+          <div className="mt-34 sm:mt-63 grid gap-18 md:grid-cols-2 xl:grid-cols-3">
+            {formatCards.map((card, index) => (
+              <Card key={card.title} {...cardMotion(shouldReduceMotion, index)}>
+                <span className="micro-label mb-23 sm:mb-34 inline-flex rounded-full border border-clay-light/60 px-14 py-11 text-clay">
+                  {card.label}
+                </span>
+                <h3 className="display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
+                  {card.title}
+                </h3>
+                <p className="mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">
+                  {card.copy}
+                </p>
+              </Card>
+            ))}
           </div>
+
+          <SectionCta />
         </section>
 
         {/* ── ОТЗЫВЫ ─────────────────────────────────────────────── */}
