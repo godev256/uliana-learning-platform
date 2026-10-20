@@ -1535,7 +1535,7 @@ function App() {
               <p className="home-hero-eyebrow">Онлайн · 7–11 класс · ОГЭ и ЕГЭ</p>
               <motion.h1
                 id="hero-title"
-                className="home-hero-title"
+                className="display home-hero-title"
                 variants={{
                   hidden: { opacity: 0, y: 18 },
                   visible: { opacity: 1, y: 0 },
