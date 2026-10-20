@@ -1498,17 +1498,17 @@ function App() {
               <source
                 type="image/avif"
                 srcSet="/hero-640.avif 640w, /hero-960.avif 960w, /hero-1254.avif 1254w"
-                sizes="(min-width: 1024px) 50vw, 100vw"
+                sizes="(min-width: 1024px) 360px, 280px"
               />
               <source
                 type="image/webp"
                 srcSet="/hero-640.webp 640w, /hero-960.webp 960w, /hero-1254.webp 1254w"
-                sizes="(min-width: 1024px) 50vw, 100vw"
+                sizes="(min-width: 1024px) 360px, 280px"
               />
               <img
                 src="/hero-960.jpg"
                 srcSet="/hero-640.jpg 640w, /hero-960.jpg 960w, /hero-1254.jpg 1254w"
-                sizes="(min-width: 1024px) 50vw, 100vw"
+                sizes="(min-width: 1024px) 360px, 280px"
                 width="1254"
                 height="1254"
                 fetchPriority="high"
@@ -1544,7 +1544,7 @@ function App() {
               >
                 Математика, в которой всё становится понятно
               </motion.h1>
-              <p className="home-hero-description">Разбираемся в школьной программе и готовимся к экзаменам. Работаем на общей доске, сохраняем конспекты и следим за результатами в личном кабинете.</p>
+              <p className="home-hero-description">Разбираемся в школьной программе и готовимся к экзаменам. Работаем на общей доске и следим за результатами в личном кабинете.</p>
 
               <motion.div
                 className="grid gap-14"
