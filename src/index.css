@@ -465,7 +465,10 @@ select.field-input {
  .home-hero-copy > div,.home-hero-copy > div > div { width:100%; }
 }
 /* Phone-only adjustments keep the approved desktop composition intact. */
+.home-copy-phone { display:none; }
 @media(max-width:640px){
+ .home-copy-full { display:none; }
+ .home-copy-phone { display:inline; }
  .home-hero-photo { order:0; width:min(100%,280px); width:min(100%,33svh,300px); aspect-ratio:1; justify-self:center; border-radius:12px; }
  .home-hero { gap:20px; }
  .home-hero-copy { gap:18px; }
@@ -477,7 +480,8 @@ select.field-input {
  #method .method-card,#format .format-card { padding:16px; }
  .method-card { display:grid; grid-template-columns:30px minmax(0,1fr); gap:10px 12px; }
  .method-card-marker { grid-column:1; grid-row:1; margin:0; align-self:center; }
- .method-card-number { width:30px; height:30px; font-size:10px; }
+ .method-card-number { width:30px; height:30px; border-radius:0; background:transparent; color:#667f70; font-size:14px; }
+ .method-card .method-card-accent { display:none; }
  .method-card .method-card-connector { display:none; }
  .method-card-title { grid-column:2; align-self:center; font-size:18px; line-height:1.35; }
  .method-card-copy { grid-column:1/-1; margin:0; font-size:14px; line-height:1.6; }
@@ -485,6 +489,26 @@ select.field-input {
  .format-card h3 { font-size:18px; line-height:1.35; }
  .format-card p { margin-top:10px; font-size:14px; line-height:1.6; }
  #method > div:last-child,#format > div:last-child { margin-top:22px; }
+ .home-about-layout { gap:22px; }
+ .home-about-facts { gap:10px; }
+ #about .about-card { padding:16px; }
+ .about-card .micro-label { margin-bottom:10px; }
+ .about-card h3 { font-size:18px; line-height:1.35; }
+ .about-card > p:last-child { margin-top:10px; font-size:14px; line-height:1.6; }
+ #about-title { margin-top:14px; }
+ #pricing > div:nth-child(2) { gap:12px; margin-top:22px; }
+ #pricing .pricing-card { grid-template-columns:minmax(0,1fr) auto; gap:10px 12px; padding:16px; align-content:start; }
+ .pricing-card-main,.pricing-card-footer { display:contents; }
+ .pricing-card-badge,.pricing-card-rhythm { display:none; }
+ .pricing-card-title { grid-column:1; grid-row:1; align-self:center; margin:0; font-size:18px; line-height:1.35; }
+ .pricing-card-price { grid-column:2; grid-row:1; justify-content:flex-end; align-self:center; }
+ .pricing-card-price > span:first-child { font-size:28px; line-height:1.15; }
+ .pricing-card-unit { grid-column:1/-1; grid-row:2; margin:0; font-size:12px; line-height:1.5; }
+ .pricing-card-description { grid-column:1/-1; grid-row:3; margin:0; font-size:14px; line-height:1.6; }
+ .pricing-card-features { grid-column:1/-1; grid-row:4; gap:6px; margin:0; }
+ .pricing-card-features li { padding-top:8px; font-size:13px; line-height:1.5; }
+ .pricing-card-action { grid-column:1/-1; grid-row:5; margin-top:4px; min-height:46px; padding:12px 14px; font-size:11px; line-height:1.4; letter-spacing:1px; }
+ #pricing > p:last-child { margin-top:16px; font-size:13px; }
 }
 @media(max-width:380px){
  .site-header { flex-wrap:nowrap; padding:12px 14px; gap:8px; }

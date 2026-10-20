@@ -81,6 +81,7 @@ const aboutFacts = [
     label: "ОПЫТ",
     title: "БОЛЕЕ 3 ЛЕТ",
     copy: "Школьники с 7 по 11 класс: подготовка к экзаменам, разбор текущих тем и возвращение уверенности в предмете.",
+    phoneCopy: "7–11 класс: школьная программа, ОГЭ и ЕГЭ.",
   },
 ];
 
@@ -89,31 +90,37 @@ const roadmapSteps = [
     number: "01",
     title: "ИНДИВИДУАЛЬНОЕ ЗАДАНИЕ",
     copy: "Перед диагностикой ребёнок получает небольшое задание под свой уровень и цель.",
+    phoneCopy: "Небольшое задание под уровень и цель ученика.",
   },
   {
     number: "02",
     title: "БЕСПЛАТНАЯ ДИАГНОСТИКА",
     copy: "На встрече знакомимся, разбираем ошибки в задании и видим, где нужна опора.",
+    phoneCopy: "Знакомимся, разбираем ошибки и находим пробелы.",
   },
   {
     number: "03",
     title: "ПЛАН ДЕЙСТВИЙ",
     copy: "Исходя из ошибок строим маршрут: темы, темп, домашняя работа и ближайшая цель.",
+    phoneCopy: "Подбираем темы, темп, домашнюю работу и ближайшую цель.",
   },
   {
     number: "04",
     title: "ПЕРВЫЕ УРОКИ",
     copy: "Собираем базу: понятные алгоритмы, самостоятельные решения и аккуратное оформление.",
+    phoneCopy: "Закрепляем алгоритмы, самостоятельное решение и оформление.",
   },
   {
     number: "05",
     title: "ОБРАТНАЯ СВЯЗЬ РОДИТЕЛЮ",
     copy: "Раз в месяц отправляю родителю подробный отчёт: что прошли, как меняется уровень, над чем работаем дальше и что стоит поддержать дома. Родитель видит прогресс и мои рекомендации.",
+    phoneCopy: "Раз в месяц — подробный отчёт родителю о прогрессе и рекомендации для занятий дома.",
   },
   {
     number: "06",
     title: "ЭКЗАМЕН",
     copy: "Через пробные экзамены, корректировку плана и экзаменационную стратегию идём к хорошему результату.",
+    phoneCopy: "Пробники, корректировка плана и стратегия экзамена.",
   },
 ];
 
@@ -121,32 +128,42 @@ const formatCards = [
   {
     label: "ГДЕ",
     title: "ОНЛАЙН, НА ИНТЕРАКТИВНОЙ ДОСКЕ",
+    phoneTitle: "ИНДИВИДУАЛЬНАЯ ДОСКА",
     copy: "Все занятия проходят на платформе с общей доской: мы пишем и решаем на ней вместе, как за одним столом.",
+    phoneCopy: "Работаем вместе на индивидуальной доске через личный кабинет.",
   },
   {
     label: "МАТЕРИАЛЫ",
     title: "КОНСПЕКТЫ ОСТАЮТСЯ НА ПЛАТФОРМЕ",
+    phoneTitle: "КОНСПЕКТЫ В КАБИНЕТЕ",
     copy: "Схемы, разборы и опорные алгоритмы хранятся там же. Ученик в любой момент открывает нужный урок и возвращается к нему.",
+    phoneCopy: "Схемы, разборы и алгоритмы доступны после урока.",
   },
   {
     label: "ДЛИТЕЛЬНОСТЬ",
     title: "60 МИНУТ",
     copy: "Часа хватает на разбор, практику и фиксацию следующего шага.",
+    phoneCopy: "Разбор темы, практика и следующий шаг.",
   },
   {
     label: "КЛАССЫ",
     title: "С 7 ПО 11",
+    phoneTitle: "7–11 КЛАСС",
     copy: "Школьная программа, ОГЭ в 9 классе, профильная или базовая математика в 10-11 классах.",
+    phoneCopy: "Школьная программа, ОГЭ, базовый и профильный ЕГЭ.",
   },
   {
     label: "ДОМАШНЯЯ РАБОТА",
     title: "ЧЁТКОЕ ЗАДАНИЕ",
+    phoneTitle: "ПОНЯТНОЕ ДЗ",
     copy: "После урока остаётся понятная домашняя работа без случайных задач и лишней нагрузки.",
+    phoneCopy: "Задания по теме урока, без лишней нагрузки.",
   },
   {
     label: "КОНТРОЛЬ",
     title: "РАЗБОР ОШИБОК",
     copy: "Ошибки не копятся: каждую превращаем в проверочное правило и следующий навык.",
+    phoneCopy: "Превращаем ошибки в правила и новые навыки.",
   },
 ];
 
@@ -278,6 +295,7 @@ const pricingPlans = [
     unit: "с одного человека за 60 минут",
     description:
       "Приведите друга и занимайтесь в паре: та же программа и та же доска, только вдвоём.",
+    phoneCopy: "Занимайтесь с другом близкого уровня.",
     features: [
       "2 человека близкого уровня",
       "60 минут занятия на общей доске",
@@ -291,6 +309,7 @@ const pricingPlans = [
     unit: "с одного человека за 60 минут",
     description:
       "Соберите компанию из трёх-четырёх друзей и занимайтесь вместе.",
+    phoneCopy: "Мини-группа друзей близкого уровня.",
     features: [
       "3–4 человека близкого уровня",
       "60 минут занятия на общей доске",
@@ -403,7 +422,11 @@ function cardMotion(shouldReduceMotion, index) {
   };
 }
 
-function SectionIntro({ titleId, eyebrow, title, copy }) {
+function HomeCopy({full,compact}) {
+  return compact ? <><span className="home-copy-full">{full}</span><span className="home-copy-phone">{compact}</span></> : full;
+}
+
+function SectionIntro({ titleId, eyebrow, title, phoneTitle, copy }) {
   return (
     <div className="grid max-w-[820px] gap-23">
       <p className="micro-label text-ash">{eyebrow}</p>
@@ -411,7 +434,7 @@ function SectionIntro({ titleId, eyebrow, title, copy }) {
         id={titleId}
         className="display text-[24px] leading-[1.28] tracking-[0.05em] text-obsidian-ink lg:text-h2 lg:leading-h2"
       >
-        {title}
+        <HomeCopy full={title} compact={phoneTitle}/>
       </h2>
       {copy ? (
         <p className="max-w-[64ch] text-body leading-body text-obsidian-ink/82">
@@ -1598,7 +1621,7 @@ function App() {
           aria-labelledby="about-title"
         >
           <motion.div {...reveal}>
-            <div className="grid gap-34 sm:gap-63 lg:grid-cols-[0.42fr_1fr] lg:gap-72">
+            <div className="home-about-layout grid gap-34 sm:gap-63 lg:grid-cols-[0.42fr_1fr] lg:gap-72">
               <div>
                 <p className="micro-label text-ash">ОБО МНЕ</p>
                 <h2
@@ -1609,9 +1632,10 @@ function App() {
                 </h2>
               </div>
 
-              <div className="grid gap-18 md:grid-cols-2">
+              <div className="home-about-facts grid gap-18 md:grid-cols-2">
                 {aboutFacts.map((fact, index) => (
                   <Card
+                    className="about-card"
                     key={fact.label}
                     {...cardMotion(shouldReduceMotion, index)}
                   >
@@ -1620,7 +1644,7 @@ function App() {
                       {fact.title}
                     </h3>
                     <p className="mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">
-                      {fact.copy}
+                      <HomeCopy full={fact.copy} compact={fact.phoneCopy}/>
                       {fact.document && (
                         <>
                           {" "}
@@ -1653,6 +1677,7 @@ function App() {
               titleId="method-title"
               eyebrow="МЕТОДИКА"
               title="Дорожная карта от знакомства до экзамена"
+              phoneTitle="От знакомства до экзамена"
             />
           </motion.div>
 
@@ -1664,7 +1689,7 @@ function App() {
                 {...cardMotion(shouldReduceMotion, index)}
               >
                 <span
-                  className="absolute inset-x-0 top-0 h-4 bg-sage"
+                  className="method-card-accent absolute inset-x-0 top-0 h-4 bg-sage"
                   aria-hidden="true"
                 />
                 <span className="method-card-marker mb-23 sm:mb-34 flex items-center gap-18">
@@ -1678,7 +1703,7 @@ function App() {
                   {step.title}
                 </h3>
                 <p className="method-card-copy mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">
-                  {step.copy}
+                  <HomeCopy full={step.copy} compact={step.phoneCopy}/>
                 </p>
               </Card>
             ))}
@@ -1708,10 +1733,10 @@ function App() {
                   {card.label}
                 </span>
                 <h3 className="display text-h3 leading-h3 tracking-[0.04em] text-sage-dark">
-                  {card.title}
+                  <HomeCopy full={card.title} compact={card.phoneTitle}/>
                 </h3>
                 <p className="mt-18 text-body-sm leading-body-sm text-obsidian-ink/82">
-                  {card.copy}
+                  <HomeCopy full={card.copy} compact={card.phoneCopy}/>
                 </p>
               </Card>
             ))}
@@ -1753,6 +1778,7 @@ function App() {
               titleId="pricing-title"
               eyebrow="ТАРИФЫ"
               title="Индивидуально или в мини-группе с друзьями"
+              phoneTitle="Выберите формат занятий"
             />
           </motion.div>
 
@@ -1760,39 +1786,39 @@ function App() {
             {pricingPlans.map((plan, index) => (
               <motion.article
                 key={plan.name}
-                className={`relative grid content-between rounded-[8px] border p-23 sm:p-34 ${
+                className={`pricing-card relative grid content-between rounded-[8px] border p-23 sm:p-34 ${
                   plan.badge
                     ? "on-dark border-sage-dark bg-sage-dark text-bone"
                     : "border-sage/25 bg-bone text-obsidian-ink"
                 }`}
                 {...cardMotion(shouldReduceMotion, index)}
               >
-                <div>
+                <div className="pricing-card-main">
                   {plan.badge ? (
-                    <span className="micro-label mb-23 inline-flex rounded-full border border-bone/40 px-14 py-11 text-bone">
+                    <span className="pricing-card-badge micro-label mb-23 inline-flex rounded-full border border-bone/40 px-14 py-11 text-bone">
                       {plan.badge}
                     </span>
                   ) : null}
 
                   <p
-                    className={`micro-label ${plan.badge ? "text-bone/72" : "text-pebble"}`}
+                    className={`pricing-card-rhythm micro-label ${plan.badge ? "text-bone/72" : "text-pebble"}`}
                   >
                     {plan.rhythm}
                   </p>
 
-                  <h3 className="display mt-18 text-h3 leading-h3 tracking-[0.06em]">
+                  <h3 className="pricing-card-title display mt-18 text-h3 leading-h3 tracking-[0.06em]">
                     {plan.name}
                   </h3>
 
                   <p
-                    className={`mt-23 max-w-[46ch] text-body-sm leading-body-sm ${
+                    className={`pricing-card-description mt-23 max-w-[46ch] text-body-sm leading-body-sm ${
                       plan.badge ? "text-bone/82" : "text-obsidian-ink/82"
                     }`}
                   >
-                    {plan.description}
+                    <HomeCopy full={plan.description} compact={plan.phoneCopy}/>
                   </p>
 
-                  <ul className="mt-34 grid list-none gap-14 p-0">
+                  <ul className="pricing-card-features mt-34 grid list-none gap-14 p-0">
                     {plan.features.map((feature) => (
                       <li
                         key={feature}
@@ -1808,8 +1834,8 @@ function App() {
                   </ul>
                 </div>
 
-                <div className="mt-43">
-                  <div className="flex flex-wrap items-baseline gap-x-14 gap-y-9">
+                <div className="pricing-card-footer mt-43">
+                  <div className="pricing-card-price flex flex-wrap items-baseline gap-x-14 gap-y-9">
                     <span
                       className="display text-price leading-price"
                       style={{ fontVariantNumeric: "tabular-nums" }}
@@ -1831,7 +1857,7 @@ function App() {
                   </div>
 
                   <p
-                    className={`mt-14 text-body-sm leading-none ${
+                    className={`pricing-card-unit mt-14 text-body-sm leading-none ${
                       plan.badge ? "text-bone/72" : "text-pebble"
                     }`}
                   >
@@ -1840,7 +1866,7 @@ function App() {
 
                   {/* TODO: подключить оплату (СБП / ЮKassa). Пока ведём на запись. */}
                   <motion.a
-                    className={`display mt-28 inline-flex min-h-[54px] w-full items-center justify-center rounded-full border px-23 py-14 text-label leading-label tracking-label no-underline transition-colors ${
+                    className={`pricing-card-action display mt-28 inline-flex min-h-[54px] w-full items-center justify-center rounded-full border px-23 py-14 text-label leading-label tracking-label no-underline transition-colors ${
                       plan.badge
                         ? "border-bone/50 text-bone hover:bg-bone hover:text-sage-dark"
                         : "border-sage-dark bg-sage-dark text-bone hover:bg-obsidian-ink"
