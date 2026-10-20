@@ -48,11 +48,26 @@ jobs:
         env:
           VITE_GO_BACKEND: 'true'
       - name: Validate both container images without publishing
-        if: github.ref != 'refs/heads/main'
         run: |
           docker build -t ulianaa-api:check backend-go
           docker build -t ulianaa-web:check .
           APP_DOMAIN=ulianaa-learning.pro API_DOMAIN=api.ulianaa-learning.pro docker run --rm -e APP_DOMAIN -e API_DOMAIN ulianaa-web:check caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Smoke-test the locked-down API container
+        run: |
+          docker run -d --name api-smoke --network host --read-only --tmpfs /tmp:size=16m,noexec,nosuid --cap-drop ALL --security-opt no-new-privileges \
+            -e DATABASE_URL="$TEST_DATABASE_URL" -e HTTP_ADDR=127.0.0.1:18083 \
+            -e JWT_SECRET=ci-smoke-jwt-secret-at-least-32-characters \
+            ulianaa-api:check
+          trap 'docker rm -f api-smoke >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18083/readyz; then
+              curl -fsS 'http://127.0.0.1:18083/api/account?action=session'
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs api-smoke
+          exit 1
   publish:
     if: github.event_name != 'pull_request'
     needs: test
