@@ -63,14 +63,18 @@ backend = auto
 filter = ulianaa-login
 logpath = /var/log/ulianaa/access.json
 maxretry = 8
-banaction = iptables-allports[chain=DOCKER-USER, protocol=all]
+banaction = iptables-allports
+chain = DOCKER-USER
+protocol = all
 [ulianaa-probes]
 enabled = true
 backend = auto
 filter = ulianaa-probes
 logpath = /var/log/ulianaa/access.json
 maxretry = 6
-banaction = iptables-allports[chain=DOCKER-USER, protocol=all]
+banaction = iptables-allports
+chain = DOCKER-USER
+protocol = all
 JAIL
 install -d -m 755 /etc/systemd/system/fail2ban.service.d
 cat > /etc/systemd/system/fail2ban.service.d/ulianaa.conf <<'ORDER'
