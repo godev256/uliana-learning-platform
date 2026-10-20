@@ -25,9 +25,12 @@ if [[ -n "$auth" ]]; then
 fi
 compose=(docker compose --env-file /opt/ulianaa/.env -f /opt/ulianaa/compose.yaml)
 "${compose[@]}" pull api caddy
+if "${compose[@]}" ps --status running --services | grep -qx postgres; then
+  /usr/local/sbin/ulianaa-backup
+fi
 if ! "${compose[@]}" up -d --wait --wait-timeout 180; then
   echo 'Deployment failed; restoring the previous release' >&2
-  if [[ "$previous" =~ ^[0-9a-f]{40}$ && "$previous" != "$IMAGE_TAG" ]]; then
+  if [[ "$previous" =~ ^[0-9a-f]{40}$ && "$previous" != "$IMAGE_TAG" ]] && docker image inspect "ghcr.io/godev256/uliana-learning-api:$previous" "ghcr.io/godev256/uliana-learning-web:$previous" >/dev/null 2>&1; then
     export IMAGE_TAG=$previous
     "${compose[@]}" up -d --wait --wait-timeout 180
   fi

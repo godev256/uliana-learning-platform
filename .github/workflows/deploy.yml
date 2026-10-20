@@ -132,6 +132,10 @@ jobs:
           test -n "$DEPLOY_USER"
           jq -n --arg username "$REGISTRY_USER" --arg token "$REGISTRY_TOKEN" '{username:$username, token:$token}' | \
             ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 "$DEPLOY_USER@$DEPLOY_HOST" "deploy $GITHUB_SHA"
+      - name: Verify public HTTPS and API readiness
+        run: |
+          curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 --max-time 10 https://ulianaa-learning.pro/readyz
+          curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 --max-time 10 https://api.ulianaa-learning.pro/readyz
       - name: Remove temporary SSH key
         if: always()
         run: rm -f ~/.ssh/id_ed25519

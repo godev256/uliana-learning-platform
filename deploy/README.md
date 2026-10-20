@@ -8,7 +8,7 @@ A push to `main` (or a manual run of **Test, publish GHCR images and deploy** on
 
 1. Go formatting, vet, real PostgreSQL integration tests with the race detector, and frontend build with `VITE_GO_BACKEND=true`.
 2. Build and push Linux/amd64 images `ghcr.io/godev256/uliana-learning-api:<commit-sha>` and `ghcr.io/godev256/uliana-learning-web:<commit-sha>`.
-3. SSH as `deploy`, execute only `deploy <full-commit-sha>`, pull both images, wait for health checks and retain the previous image tag on failure.
+3. SSH as `deploy`, execute only `deploy <full-commit-sha>`, pull both images, back up the database, wait for health checks, verify both public HTTPS endpoints, and retain the previous image tag on container-health failure.
 
 The `codex/smooth-ink-icons` branch runs validation and publishes commit-tagged images, but its deployment job is explicitly disabled. Only `main` can deploy.
 
@@ -52,6 +52,8 @@ To inspect a dump without changing production:
 ```sh
 cat backups/postgres-TIMESTAMP.dump | docker compose --env-file .env -f compose.yaml exec -T postgres pg_restore --list
 ```
+
+Image rollback does not undo database migrations; schema changes must remain backward-compatible with the previous API version.
 
 Test restore into a separate empty database first. Never run `down -v` on production; it deletes persistent data and certificates.
 
