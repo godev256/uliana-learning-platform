@@ -44,7 +44,7 @@ services:
         ipv4_address: 172.30.50.20
       database: {}
     read_only: true
-    tmpfs: [/tmp:size=16m,noexec,nosuid]
+    tmpfs: ['/tmp:size=16m,noexec,nosuid']
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     healthcheck:

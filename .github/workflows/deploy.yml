@@ -49,6 +49,8 @@ jobs:
           VITE_GO_BACKEND: 'true'
       - name: Validate both container images without publishing
         run: |
+          APP_DOMAIN=ulianaa-learning.pro API_DOMAIN=api.ulianaa-learning.pro POSTGRES_PASSWORD=ci-config-only JWT_SECRET=ci-config-only IMAGE_TAG="$GITHUB_SHA" \
+            docker compose -f deploy/compose.yaml config --format json | jq -e '.services.api.tmpfs == ["/tmp:size=16m,noexec,nosuid"]'
           docker build -t ulianaa-api:check backend-go
           docker build -t ulianaa-web:check .
           APP_DOMAIN=ulianaa-learning.pro API_DOMAIN=api.ulianaa-learning.pro docker run --rm -e APP_DOMAIN -e API_DOMAIN ulianaa-web:check caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
