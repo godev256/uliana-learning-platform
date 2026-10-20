@@ -63,15 +63,22 @@ backend = auto
 filter = ulianaa-login
 logpath = /var/log/ulianaa/access.json
 maxretry = 8
-banaction = iptables-allports[chain=DOCKER-USER]
+banaction = iptables-allports[chain=DOCKER-USER, protocol=all]
 [ulianaa-probes]
 enabled = true
 backend = auto
 filter = ulianaa-probes
 logpath = /var/log/ulianaa/access.json
 maxretry = 6
-banaction = iptables-allports[chain=DOCKER-USER]
+banaction = iptables-allports[chain=DOCKER-USER, protocol=all]
 JAIL
+install -d -m 755 /etc/systemd/system/fail2ban.service.d
+cat > /etc/systemd/system/fail2ban.service.d/ulianaa.conf <<'ORDER'
+[Unit]
+After=docker.service
+Wants=docker.service
+ORDER
+systemctl daemon-reload
 fail2ban-client -t
 systemctl enable --now fail2ban
 systemctl restart fail2ban
