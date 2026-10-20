@@ -47,6 +47,10 @@ jobs:
         run: npm run build
         env:
           VITE_GO_BACKEND: 'true'
+      - name: Cabinet period controls and responsive layouts
+        run: |
+          npx playwright install --with-deps chromium
+          npm run verify:cabinet-design
       - name: Validate both container images without publishing
         run: |
           APP_DOMAIN=ulianaa-learning.pro API_DOMAIN=api.ulianaa-learning.pro POSTGRES_PASSWORD=ci-config-only JWT_SECRET=ci-config-only IMAGE_TAG="$GITHUB_SHA" \

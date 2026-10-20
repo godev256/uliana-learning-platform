@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import SiteMenu from "./components/SiteMenu.jsx";
+import BoardIcon from "./components/board-icons.jsx";
 
 /**
  * ЗАГЛУШКИ. Заменить на реальные данные — см. ДАННЫЕ-ОТ-УЛЬЯНЫ.md.
@@ -1464,7 +1465,11 @@ function App() {
 
   return (
     <div className="min-h-screen bg-canvas text-obsidian-ink">
-      <SiteMenu />
+      <header className="site-header">
+        <a className="site-brand" href="#start">ulianaa-learning.pro<span>Математика с Ульяной</span></a>
+        <nav className="site-header-nav" aria-label="Основная навигация"><a href="#about">О занятиях</a><a href="#reviews">Отзывы</a><a href="#pricing">Стоимость</a></nav>
+        <div className="site-header-actions"><a className="site-cabinet-link" href="/cabinet">Мой кабинет <BoardIcon name="arrow-right"/></a><SiteMenu /></div>
+      </header>
       <a className="skip-link" href="#main-content">
         К основному содержанию
       </a>
@@ -1473,11 +1478,11 @@ function App() {
         {/* ── СТАРТ ──────────────────────────────────────────────── */}
         <section
           id="start"
-          className="grid grid-cols-1 items-start lg:grid-cols-2"
+          className="home-hero grid grid-cols-1 items-start lg:grid-cols-2"
           aria-labelledby="hero-title"
         >
           <motion.figure
-            className="relative m-0 aspect-square overflow-hidden bg-canvas"
+            className="home-hero-photo relative m-0 aspect-square overflow-hidden bg-canvas"
             initial={
               shouldReduceMotion ? false : { clipPath: "inset(0 18% 0 0)" }
             }
@@ -1514,22 +1519,10 @@ function App() {
             </motion.picture>
           </motion.figure>
 
-          <div className="relative flex h-full flex-col px-23 py-23 sm:px-34 sm:py-34 lg:px-43 xl:px-63">
-            <div className="flex items-start justify-between gap-23">
-              <a
-                href="#start"
-                className="display text-label leading-label tracking-label text-obsidian-ink no-underline"
-              >
-                УЛЬЯНА
-                <span className="mt-9 block text-pebble">МАТЕМАТИКА</span>
-              </a>
-              <p className="micro-label text-right text-pebble">
-                ОНЛАЙН · 7–11 КЛАСС
-              </p>
-            </div>
+          <div className="home-hero-content relative flex h-full flex-col">
 
             <motion.div
-              className="flex flex-1 flex-col items-start justify-center gap-23 py-28 text-left sm:gap-28 sm:py-43"
+              className="home-hero-copy flex flex-1 flex-col items-start justify-center gap-23 text-left sm:gap-28"
               initial={shouldReduceMotion ? false : "hidden"}
               animate="visible"
               variants={{
@@ -1539,17 +1532,19 @@ function App() {
                 },
               }}
             >
+              <p className="home-hero-eyebrow">Онлайн · 7–11 класс · ОГЭ и ЕГЭ</p>
               <motion.h1
                 id="hero-title"
-                className="display max-w-[640px] text-[28px] leading-[1.2] tracking-[0.04em] text-obsidian-ink sm:text-[38px] xl:text-h1 xl:leading-h1"
+                className="home-hero-title"
                 variants={{
                   hidden: { opacity: 0, y: 18 },
                   visible: { opacity: 1, y: 0 },
                 }}
                 transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               >
-                Школьная программа, подготовка к ОГЭ и ЕГЭ
+                Математика, в которой всё становится понятно
               </motion.h1>
+              <p className="home-hero-description">Разбираемся в школьной программе и готовимся к экзаменам. Работаем на общей доске, сохраняем конспекты и следим за результатами в личном кабинете.</p>
 
               <motion.div
                 className="grid gap-14"

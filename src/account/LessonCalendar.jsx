@@ -1,8 +1,8 @@
 import BoardIcon from "../components/board-icons.jsx";
 import {useState} from 'react';
+import MonthNavigator from './MonthNavigator.jsx';
 import {calendarEvents} from './calendar-events.js';
 
-const dateKey=date=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 const fromKey=value=>new Date(`${value}T12:00:00`);
 const describe=value=>fromKey(value).toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
 const keyOf=event=>`${event.originalDate}T${event.originalTime}`;
@@ -25,7 +25,7 @@ export default function LessonCalendar({schedule,changes=[],teacher,onChange,onS
  const[month,setMonth]=useState(()=>today.slice(0,7)),[selected,setSelected]=useState(today),[editing,setEditing]=useState(null);
  const events=calendarEvents(schedule,changes,month),first=fromKey(`${month}-01`),offset=(first.getDay()+6)%7,count=new Date(first.getFullYear(),first.getMonth()+1,0).getDate();
  const selectedEvents=events.filter(event=>event.date===selected);
- function navigate(step){const date=fromKey(`${month}-01`);date.setMonth(date.getMonth()+step);const value=dateKey(date);setMonth(value.slice(0,7));setSelected(value);setEditing(null);}
+
  function apply(){
   const {moved,...change}=editing;
   const next=changes.filter(row=>keyOf(row)!==keyOf(change));
@@ -33,7 +33,7 @@ export default function LessonCalendar({schedule,changes=[],teacher,onChange,onS
   onChange([...next,change]);setMonth(change.date.slice(0,7));setSelected(change.date);setEditing(null);
  }
  return <section className="account-card account-calendar" aria-label="Календарь занятий">
-  <div className="account-calendar-heading"><div><h2>Календарь занятий</h2><p>Московское время{teacher?' · Выберите день и перенесите нужный урок. Изменения появятся у ученика после сохранения.':''}</p></div><div className="account-calendar-navigation"><button type="button" className="account-secondary" aria-label="Предыдущий месяц календаря" onClick={()=>navigate(-1)}><BoardIcon name="chevron-left"/></button><strong aria-live="polite">{first.toLocaleDateString('ru-RU',{month:'long',year:'numeric'})}</strong><button type="button" className="account-secondary" aria-label="Следующий месяц календаря" onClick={()=>navigate(1)}><BoardIcon name="chevron-right"/></button></div></div>
+  <div className="account-calendar-heading"><div><h2>Календарь занятий</h2><p>Московское время{teacher?' · Выберите день и перенесите нужный урок. Изменения появятся у ученика после сохранения.':''}</p></div><MonthNavigator value={month} onChange={value=>{setMonth(value);setSelected(value===today.slice(0,7)?today:`${value}-01`);setEditing(null);}} label="календаря" currentMonth={today.slice(0,7)}/></div>
   <div className="account-calendar-layout"><div><div className="account-calendar-week" aria-hidden="true">{['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(day=><span key={day}>{day}</span>)}</div><div className="account-calendar-grid">{Array.from({length:offset},(_,i)=><span key={`empty-${i}`}/>)}{Array.from({length:count},(_,i)=>{
    const date=`${month}-${String(i+1).padStart(2,'0')}`,lessons=events.filter(event=>event.date===date);
    return <button type="button" key={date} aria-label={`${describe(date)}${lessons.length?`, занятий: ${lessons.length}`:''}`} aria-pressed={selected===date} aria-current={date===today?'date':undefined} className={`account-calendar-day${lessons.length?' has-lessons':''}${selected===date?' is-selected':''}${date===today?' is-today':''}`} onClick={()=>{setSelected(date);setEditing(null);}}><span>{i+1}</span><span className="account-calendar-times">{lessons.slice(0,2).map((event,index)=><small className={event.moved?'is-moved':''} key={index}>{event.time}{event.moved?' ↪':''}</small>)}{lessons.length>2&&<small>+{lessons.length-2}</small>}</span></button>;
