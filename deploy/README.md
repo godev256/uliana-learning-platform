@@ -4,11 +4,13 @@ GitHub repository: `godev256/uliana-learning-platform`. Frontend and Go backend 
 
 ## Release path
 
-A push to `main` (or a manual run of **Test, publish GHCR images and deploy**) performs:
+A push to `main` (or a manual run of **Test, publish GHCR images and deploy** on `main`) performs:
 
 1. Go formatting, vet, real PostgreSQL integration tests with the race detector, and frontend build with `VITE_GO_BACKEND=true`.
 2. Build and push Linux/amd64 images `ghcr.io/godev256/uliana-learning-api:<commit-sha>` and `ghcr.io/godev256/uliana-learning-web:<commit-sha>`.
 3. SSH as `deploy`, execute only `deploy <full-commit-sha>`, pull both images, wait for health checks and retain the previous image tag on failure.
+
+The `codex/smooth-ink-icons` branch runs validation and publishes commit-tagged images, but its deployment job is explicitly disabled. Only `main` can deploy.
 
 The web image includes React and Caddy. PostgreSQL 17 uses a persistent volume. Redis is not used. Only Caddy publishes ports 80/TCP, 443/TCP and 443/UDP. API and PostgreSQL ports are private Docker networks.
 

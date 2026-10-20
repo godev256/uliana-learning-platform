@@ -1,7 +1,7 @@
 name: Test, publish GHCR images and deploy
 on:
   push:
-    branches: [main]
+    branches: [main, codex/smooth-ink-icons]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -47,6 +47,12 @@ jobs:
         run: npm run build
         env:
           VITE_GO_BACKEND: 'true'
+      - name: Validate both container images without publishing
+        if: github.ref != 'refs/heads/main'
+        run: |
+          docker build -t ulianaa-api:check backend-go
+          docker build -t ulianaa-web:check .
+          APP_DOMAIN=ulianaa-learning.pro API_DOMAIN=api.ulianaa-learning.pro docker run --rm -e APP_DOMAIN -e API_DOMAIN ulianaa-web:check caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
   publish:
     if: github.event_name != 'pull_request'
     needs: test
@@ -84,7 +90,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: publish
     runs-on: ubuntu-latest
     permissions:
