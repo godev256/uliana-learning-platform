@@ -466,7 +466,7 @@ select.field-input {
 }
 /* Phone-only adjustments keep the approved desktop composition intact. */
 @media(max-width:640px){
- .home-hero-photo { width:min(100%,220px); aspect-ratio:1; justify-self:center; border-radius:12px; }
+ .home-hero-photo { order:0; width:min(100%,280px); width:min(100%,33svh,300px); aspect-ratio:1; justify-self:center; border-radius:12px; }
  .home-hero { gap:20px; }
  .home-hero-copy { gap:18px; }
  .home-hero-proof dd > span:first-child { font-size:18px; }
