@@ -431,7 +431,7 @@ select.field-input {
 .home-hero-photo { border-radius:16px; }
 .home-contact-phone { display:none; }
 @media(min-width:1024px){
- .home-hero-photo { left:28px; width:100%; min-width:0; align-self:start; }
+ .home-hero-photo { width:88%; max-width:520px; min-width:0; align-self:start; justify-self:end; }
 }
 .home-hero-content { min-width:0; }
 .home-hero-copy { padding:28px 0; gap:24px; }
