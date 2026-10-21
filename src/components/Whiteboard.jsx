@@ -10,7 +10,7 @@ import { appendStrokePoints } from "./board-strokes.js";
 import { boardId } from "./board-id.js";
 import { clipboardImage, validBoardImage } from "./board-images.js";
 import { flushSync } from "react-dom";
-import { sanitizeConstructions, sameReference, validSpatialPair, spatialPoint, nearestProjectedEdge, constructionReferences, nextPointLabel, spatialIntersections, planeGeometry, withoutConstruction, nearestCoordinateAxis, clippedSpatialLine, spatialLinePoints, extendSpatialLine } from "./board-space.js";
+import { sanitizeConstructions, sameReference, validSpatialPair, spatialPoint, nearestProjectedEdge, constructionReferences, nextPointLabel, spatialIntersections, planeGeometry, withoutConstruction, nearestCoordinateAxis, clippedSpatialLine, spatialLinePoints, beginDirectedExtension, dragDirectedExtension } from "./board-space.js";
 import { visualizationLayout } from "./board-visualization.jsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./whiteboard.css";
@@ -253,6 +253,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     if (!item) return;
     setSelectedId(id); setTool("visualization");
     setLineStarts(starts=>({...starts,[id]:null}));
+    setExtensionSelections(current=>({...current,[id]:null}));
     setPlaneStarts(starts=>({...starts,[id]:[]}));
     if (action === "reset") {
       remember(itemsRef.current);
@@ -589,23 +590,28 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       flushSync(()=>setSelectedId(item.id));
       const mode = visualization.hasAttribute("data-viz-header") || tool==="select" ? "move" : visualizationModes[item.id]??"rotate";
       if(mode==="extend"){
-        const {model}=visualizationLayout(item,shapeBounds(item)),position=point(event),box=shapeBounds(item),scale=PAGE_WIDTH/(event.currentTarget.getBoundingClientRect().width||PAGE_WIDTH);
+        const {model}=visualizationLayout(item,shapeBounds(item)),position=point(event),scale=PAGE_WIDTH/(event.currentTarget.getBoundingClientRect().width||PAGE_WIDTH);
         const endpoint=event.target.closest('[data-extend-line-id]');
         if(endpoint){
           const line=(item.spatialLines??[]).find(row=>row.id===endpoint.dataset.extendLineId);if(!line)return;
           const projected=spatialLinePoints(item,line,model);if(!projected)return;
           event.currentTarget.setPointerCapture(event.pointerId);
-          gesture.current={pointerId:event.pointerId,before:itemsRef.current,original:item,item,mode:"extend-line",lineId:line.id,end:Number(endpoint.dataset.extendEnd),projected};return;
+          gesture.current={pointerId:event.pointerId,before:itemsRef.current,original:item,base:item,item,mode:"extend-line",lineId:line.id,projected,grabPoint:position};return;
         }
-        const candidates=[];
-        for(const line of item.spatialLines??[]){const clip=clippedSpatialLine(item,line,model,box);if(clip){const[a,b]=clip.ends,dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((position[0]-a[0])*dx+(position[1]-a[1])*dy)/(dx*dx+dy*dy||1)));candidates.push({source:{kind:"line",id:line.id},distance:Math.hypot(position[0]-a[0]-t*dx,position[1]-a[1]-t*dy)});}}
-        if(item.type!=="viz-space"){const edge=nearestProjectedEdge(model,position);if(edge)candidates.push({source:{kind:"edge",edge:edge.pair},distance:edge.distance});}
-        const nearest=candidates.sort((a,b)=>a.distance-b.distance)[0];if(!nearest||nearest.distance>16*scale)return;
-        const extended=extendSpatialLine(item,nearest.source,boardId());if(!extended)return;
-        setExtensionSelections(current=>({...current,[item.id]:extended.lineId}));
-        if(JSON.stringify(extended.item.spatialLines)===JSON.stringify(item.spatialLines))return;
+        const references=[...constructionReferences(item),...(item.type==="viz-space"?[]:model.vertices.map((_,index)=>({kind:"vertex",index})))];
+        const nearest=references.map(reference=>({reference,distance:Math.hypot(...spatialPoint(item,reference,model).map((value,index)=>value-position[index]))})).sort((a,b)=>a.distance-b.distance)[0];
+        const label=event.target.closest('text'),pointHit=label?.closest('[data-construction-point-id]'),vertexHit=label?.closest('[data-vertex-index]');
+        const reference=pointHit?{kind:pointHit.dataset.pointKind,id:pointHit.dataset.constructionPointId}:vertexHit?{kind:"vertex",index:Number(vertexHit.dataset.vertexIndex)}:nearest?.distance<=16*scale?nearest.reference:null;
+        if(!reference)return;
+        const first=lineStarts[item.id];
+        if(!first){setLineStarts(current=>({...current,[item.id]:reference}));setExtensionSelections(current=>({...current,[item.id]:null}));return;}
+        if(sameReference(first,reference)){setLineStarts(current=>({...current,[item.id]:null}));return;}
+        const prepared=beginDirectedExtension(item,[first,reference],boardId());if(!prepared)return;
+        const line=prepared.item.spatialLines.find(row=>row.id===prepared.lineId),projected=spatialLinePoints(prepared.item,line,model);if(!projected)return;
+        setLineStarts(current=>({...current,[item.id]:null}));setExtensionSelections(current=>({...current,[item.id]:prepared.lineId}));
         event.currentTarget.setPointerCapture(event.pointerId);
-        gesture.current={pointerId:event.pointerId,before:itemsRef.current,original:item,item:extended.item,mode:"mark",clientStart:[event.clientX,event.clientY]};setDraft(extended.item);return;
+        const changed=sanitizeConstructions(prepared.item);
+        gesture.current={pointerId:event.pointerId,before:itemsRef.current,original:item,base:prepared.item,item:changed,mode:"extend-line",lineId:prepared.lineId,projected,grabPoint:position};setDraft(changed);return;
       }
       if (mode === "rename") {
         const {model}=visualizationLayout(item,shapeBounds(item)),position=point(event),scale=PAGE_WIDTH/(event.currentTarget.getBoundingClientRect().width||PAGE_WIDTH);
@@ -788,10 +794,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     }
     const next = point(event);
     if(current.mode==="extend-line"){
-      const[a,b]=current.projected,delta=b.map((value,index)=>value-a[index]),length=delta[0]**2+delta[1]**2;
-      if(length<1e-8)return;
-      const t=Math.max(-20,Math.min(20,((next[0]-a[0])*delta[0]+(next[1]-a[1])*delta[1])/length));
-      current.item=sanitizeConstructions({...current.original,spatialLines:current.original.spatialLines.map(line=>line.id===current.lineId?{...line,range:current.end===0?[Math.min(0,t),line.range[1]]:[line.range[0],Math.max(1,t)]}:line)});
+      current.item=dragDirectedExtension(current.base,current.lineId,current.projected,next,current.grabPoint);
       setDraft(current.item);return;
     }
     if (current.mode === "rotate") {
@@ -841,6 +844,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       return;
     }
     if(current.mode==="extend-line"){
+      current.item=dragDirectedExtension(current.base,current.lineId,current.projected,point(event),current.grabPoint);
       if(JSON.stringify(current.item.spatialLines)!==JSON.stringify(current.original.spatialLines)){remember(current.before);update(current.before.map(item=>item.id===current.item.id?current.item:item));}
       return;
     }

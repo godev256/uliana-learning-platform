@@ -44,18 +44,24 @@ export function nearestProjectedEdge(model,position) {
   return nearest;
 }
 export const validSpatialRange = range => Array.isArray(range)&&range.length===2&&range.every(Number.isFinite)&&range[0]>=-20&&range[0]<=0&&range[1]>=1&&range[1]<=20;
-export function extendSpatialLine(item,source,id){
- let line;
- if(source.kind==="line")line=(item.spatialLines??[]).find(row=>row.id===source.id);
- else if(source.kind==="edge"&&item.type!=="viz-space"&&isEdge(item,source.edge)){
-  const through=source.edge.map(index=>({kind:"vertex",index}));
-  line=(item.spatialLines??[]).find(row=>row.kind==="edge-extension"&&row.through.every(ref=>through.some(other=>sameReference(ref,other))))??{id,kind:"edge-extension",through};
- }
- if(!line||!spatialLinePoints(item,line))return null;
- const changed={...line,range:line.range??[-.35,1.35]};if(changed.kind==="segment")delete changed.kind;
- const exists=(item.spatialLines??[]).some(row=>row.id===changed.id);
- if(!exists&&(item.spatialLines??[]).length>=200)return null;
- return {lineId:changed.id,item:sanitizeConstructions({...item,spatialLines:exists?item.spatialLines.map(row=>row.id===changed.id?changed:row):[...(item.spatialLines??[]),changed]})};
+// The click order defines the direction: the first point stays fixed and the
+// continuation grows only past the second point, with no automatic extra length.
+export function beginDirectedExtension(item,through,id){
+ if(!validSpatialPair(item,through))return null;
+ const existing=(item.spatialLines??[]).find(line=>line.kind!=="parallel"&&line.through.length===2&&line.through.every(ref=>through.some(other=>sameReference(ref,other))));
+ if(!existing&&(item.spatialLines??[]).length>=200)return null;
+ const line={...(existing??{}),id:existing?.id??id,through,range:[0,1]};delete line.kind;
+ if(item.type!=="viz-space"&&through.every(ref=>ref.kind==="vertex")&&isEdge(item,through.map(ref=>ref.index)))line.kind="edge-extension";
+ return {lineId:line.id,item:{...item,spatialLines:existing?item.spatialLines.map(row=>row.id===line.id?line:row):[...(item.spatialLines??[]),line]}};
+}
+export function dragDirectedExtension(item,lineId,projected,position,grabPoint=null){
+ const[a,b]=projected,delta=b.map((value,index)=>value-a[index]),length=delta[0]**2+delta[1]**2;
+ if(length<1e-8)return item;
+ const initialEnd=item.spatialLines.find(line=>line.id===lineId)?.range?.[1]??1;
+ const target=grabPoint?b.map((value,index)=>a[index]+delta[index]*initialEnd+position[index]-grabPoint[index]):position;
+ const parameter=((target[0]-a[0])*delta[0]+(target[1]-a[1])*delta[1])/length;
+ const end=parameter<1+1e-8?1:Math.min(20,parameter);
+ return sanitizeConstructions({...item,spatialLines:item.spatialLines.map(line=>line.id===lineId?{...line,range:[0,end]}:line)});
 }
 const validLineKind = (item,line) => !line.kind || line.kind==="segment" || line.kind==="edge-extension" && line.through.every(ref=>ref.kind==="vertex") && solidGeometry(item.type).faces.some(face=>face.some((vertex,index)=>vertex===line.through[0].index && (face[(index+1)%face.length]===line.through[1].index || face[(index+face.length-1)%face.length]===line.through[1].index)));
 export const sanitizeSpatialLines = item => Array.isArray(item.spatialLines) ? item.spatialLines.slice(0,200).filter(line=>line && typeof line.id==="string" && (line.range===undefined||validSpatialRange(line.range)) && (line.kind==="parallel" ? !!spatialLinePoints(item,line) : validSpatialPair(item,line.through) && validLineKind(item,line))) : [];

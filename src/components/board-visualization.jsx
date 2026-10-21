@@ -80,7 +80,7 @@ export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1
             {paths.solid && <path d={paths.solid} fill="none" stroke={lineColor} strokeWidth={Math.max(4,item.size)} pointerEvents="none" />}
           </>}
           </g>
-          {mode==="extend"&&extensionId===line.id&&line.range&&segment.ends.map(([cx,cy],end)=><g key={end} data-viz-controls="true" data-extend-line-id={line.id} data-extend-end={end} style={{cursor:"ew-resize"}}><circle cx={cx} cy={cy} r={16*scale} fill="transparent"/><circle cx={cx} cy={cy} r={5*scale} fill="white" stroke={lineColor} strokeWidth={2*scale} pointerEvents="none"/></g>)}
+          {mode==="extend"&&extensionId===line.id&&line.range&&segment.ends.slice(1).map(([cx,cy])=><g key="end" data-viz-controls="true" data-extend-line-id={line.id} data-extend-end="1" style={{cursor:"ew-resize"}}><circle cx={cx} cy={cy} r={16*scale} fill="transparent"/><circle cx={cx} cy={cy} r={5*scale} fill="white" stroke={lineColor} strokeWidth={2*scale} pointerEvents="none"/></g>)}
         </g>;
       })}
       {mode==="point" && item.type!=="viz-space" && !deleting && model.edges.map(({pair:[a,b]})=><path key={`${a}-${b}`} data-viz-edge={`${a},${b}`} data-viz-controls="true" d={`M${model.vertices[a]} L${model.vertices[b]}`} fill="none" stroke="transparent" strokeWidth={20*scale} pointerEvents="none" />)}
@@ -88,8 +88,8 @@ export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1
         {vertexOrder(item.type).map(index=>{
           const [vx,vy]=model.vertices[index];
           const dx=vx-center[0],dy=vy-center[1],length=Math.hypot(dx,dy)||1;
-          return <g key={index} data-vertex-index={index} pointerEvents={(mode==="space-line" || mode==="segment" || mode==="plane" || mode==="parallel") && !deleting ? "all" : "none"}>
-            {(mode==="space-line" || mode==="segment" || mode==="plane" || mode==="parallel") && !deleting && <circle cx={vx} cy={vy} r={14*scale} fill="transparent" stroke="none" data-viz-controls="true" />}
+          return <g key={index} data-vertex-index={index} pointerEvents={(mode==="extend" || mode==="space-line" || mode==="segment" || mode==="plane" || mode==="parallel") && !deleting ? "all" : "none"}>
+            {(mode==="extend" || mode==="space-line" || mode==="segment" || mode==="plane" || mode==="parallel") && !deleting && <circle cx={vx} cy={vy} r={14*scale} fill="transparent" stroke="none" data-viz-controls="true" />}
             <text data-vertex={vertexNames[solidType(item.type)][index]} x={vx+dx/length*fontSize*.6} y={vy+dy/length*fontSize*.6} textAnchor="middle" dominantBaseline="central">{vertexNames[solidType(item.type)][index]}</text>
           </g>;
         })}
@@ -103,7 +103,7 @@ export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1
         const [px,py]=spatialPoint(item,{kind:point.kind,id:point.id},model);
         if (px<x || px>x+width || py<y+header+actions+planeChooser || py>y+height) return null;
         return <g key={point.id} data-construction-point-id={point.id} data-point-kind={point.kind} data-free-point-id={point.kind==="free" ? point.id : undefined} data-edge-point-id={point.kind==="point" ? point.id : undefined} data-intersection-point-id={point.kind==="intersection" ? point.id : undefined}>
-          {(deleting || mode==="space-line" || mode==="segment" || mode==="plane" || mode==="parallel" || mode==="rename") && <circle cx={px} cy={py} r={16*scale} fill="transparent" />}
+          {(deleting || mode==="extend" || mode==="space-line" || mode==="segment" || mode==="plane" || mode==="parallel" || mode==="rename") && <circle cx={px} cy={py} r={16*scale} fill="transparent" />}
           <circle cx={px} cy={py} r={fontSize*.16} fill="#3058a0" stroke="white" strokeWidth="3" />
           <title>{point.kind==="free" ? `${point.label} (${point.position.join("; ")})` : point.label}</title>
           <text x={px+fontSize*.3} y={py-fontSize*.3} fill="#3058a0" stroke="white" strokeWidth="6" paintOrder="stroke" fontSize={fontSize*.85}>{point.label}</text>
@@ -114,7 +114,7 @@ export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1
         return projected && <circle key={index} data-viz-controls="true" data-plane-selection="true" cx={projected[0]} cy={projected[1]} r={fontSize*.3} fill="none" stroke="#a164a7" strokeWidth="4" pointerEvents="none" />;
       })}
       {lineStart && spatialPoint(item,lineStart,model) && <circle data-viz-controls="true" cx={spatialPoint(item,lineStart,model)[0]} cy={spatialPoint(item,lineStart,model)[1]} r={fontSize*.3} fill="none" stroke="#b77924" strokeWidth="4" pointerEvents="none" />}
-      <text data-viz-controls="true" x={x+width/2} y={y+height-inset*.35} textAnchor="middle" fill="#63766b" fontSize={fontSize*.7} pointerEvents="none">{mode==="extend" ? "Нажмите на отрезок или ребро · потяните за концы продления" : mode==="delete" ? "Нажмите на прямую, отрезок, точку или плоскость" : mode==="parallel" ? (lineStart ? "Выберите прямую, отрезок, ребро или ось" : "Выберите точку, затем направление") : mode==="move" ? "Потяните внутри окна, чтобы переместить его" : (mode==="space-line" || mode==="segment") ? (lineStart ? "Выберите вторую точку" : "Выберите две точки или вершины") : mode==="plane" ? (planeStart.length===2 ? "Выберите третью точку вне прямой первых двух" : `Выберите ${planeStart.length ? "вторую" : "первую"} из трёх точек`) : mode==="intersection" ? "Нажмите на пересечение прямых или прямой с ребром" : mode==="rename" ? "Нажмите на вашу точку, чтобы изменить имя" : mode==="point" ? (item.type==="viz-space" ? "Нажмите на ось X, Y или Z · шаг 0,25" : "Нажмите на ребро — точка закрепится на нём") : "Потяните внутри окна, чтобы вращать фигуру"}</text>
+      <text data-viz-controls="true" x={x+width/2} y={y+height-inset*.35} textAnchor="middle" fill="#63766b" fontSize={fontSize*.7} pointerEvents="none">{mode==="extend" ? (lineStart?"Выберите вторую точку и потяните от неё":"Выберите первую точку, затем потяните от второй") : mode==="delete" ? "Нажмите на прямую, отрезок, точку или плоскость" : mode==="parallel" ? (lineStart ? "Выберите прямую, отрезок, ребро или ось" : "Выберите точку, затем направление") : mode==="move" ? "Потяните внутри окна, чтобы переместить его" : (mode==="extend" || mode==="space-line" || mode==="segment") ? (lineStart ? "Выберите вторую точку" : "Выберите две точки или вершины") : mode==="plane" ? (planeStart.length===2 ? "Выберите третью точку вне прямой первых двух" : `Выберите ${planeStart.length ? "вторую" : "первую"} из трёх точек`) : mode==="intersection" ? "Нажмите на пересечение прямых или прямой с ребром" : mode==="rename" ? "Нажмите на вашу точку, чтобы изменить имя" : mode==="point" ? (item.type==="viz-space" ? "Нажмите на ось X, Y или Z · шаг 0,25" : "Нажмите на ребро — точка закрепится на нём") : "Потяните внутри окна, чтобы вращать фигуру"}</text>
     </g>
   </g>;
 }
