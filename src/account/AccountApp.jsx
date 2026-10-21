@@ -1,6 +1,7 @@
 import BoardIcon from "../components/board-icons.jsx";
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {clearPrivateAssets} from '../components/board-assets.js';
+import BoardLoading from '../components/BoardLoading.jsx';
 import Whiteboard from '../components/Whiteboard.jsx';
 import {accountRequest,setBoardOwner} from './client.js';
 import LessonCalendar from './LessonCalendar.jsx';
@@ -51,7 +52,7 @@ function AccountBoards({id,studentMode}){
   if(busy||topics.length>=100)return;setBusy(true);setError('');
   try{if(!await preserve())return;const {document}=await preparePdfTopic(file,setProgress);const result=await accountRequest('topics',{studentId:id,operation:'create',title:file.name.replace(/\.pdf$/i,'').slice(0,80)||'Рабочий лист',document});await reload();if(await preserve())activate(result.topic.id);}catch(err){setError(err.message);}finally{setBusy(false);setProgress('');}
  }
- if(!topics)return <div className="account-shell"><Message error={error}/>{!error&&<p role="status">Загружаем доски…</p>}</div>;
+ if(!topics)return error?<div className="account-shell"><Message error={error}/></div>:<BoardLoading/>;
  const panel=<TopicPanel topics={topics} activeId={activeId} onSelect={select} onCreate={title=>mutate('create',{title})} onRename={(topicId,title)=>mutate('rename',{topicId,title})} onReorder={(from,to)=>{const ids=topics.map(row=>row.id);[ids[from],ids[to]]=[ids[to],ids[from]];return mutate('reorder',{ids});}} onPdf={addPdf} progress={progress} editable={!studentMode} busy={busy} error={error}/>;
  return <CloudBoard key={`${id}:${activeId}`} id={id} topicId={activeId} studentMode={studentMode} topicTitle={topics.find(topic=>topic.id===activeId)?.title} topicsPanel={panel} beforeSwitch={beforeSwitch}/>;
 }
@@ -76,7 +77,7 @@ function CloudBoard({id,topicId='main',studentMode,topicTitle,topicsPanel,before
  useEffect(()=>{const guard=event=>{if(sync.current?.dirty||sync.current?.saving){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',guard);const refresh=()=>void sync.current?.refresh();window.addEventListener('online',refresh);window.addEventListener('focus',refresh);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};},[]);
  if(error)return <div className="account-shell"><a href="/cabinet" aria-label="← В кабинет"><BoardIcon name="arrow-left"/>В кабинет</a><Message error={error}/></div>;
  if(recovery)return <div className="account-shell"><section className="account-card"><h1>На устройстве остались записи</h1><p>Доска также изменилась в другом окне. Выберите версию, которую хотите открыть. Восстановление записей с устройства заменит сохранённую версию.</p><button className="account-secondary" onClick={()=>{localStorage.removeItem(draftKey);load(recovery.remote,recovery.remote.notebook);setRecovery(null);}}>Открыть сохранённую версию</button><button className="account-primary" onClick={()=>{load(recovery.remote,recovery.draft.notebook);setRecovery(null);}}>Восстановить мои записи</button></section></div>;
- if(!data)return <p className="account-loading" role="status">Загружаем доску…</p>;
+ if(!data)return <BoardLoading/>;
  const status=!localCopy?'Не удалось сохранить копию на устройстве. Скачайте PDF.':syncState.error?'Связь прервана. Записи на этом устройстве сохранены; повторяем подключение.':'Доска сохраняется автоматически.';
  return <Whiteboard studentMode={studentMode} pdfMode={data.topic?.kind==='pdf'} topicsPanel={topicsPanel} initialNotebook={data.notebook} syncNotebook={data.syncNotebook} storageKey={`uliana-account-board:${suffix}`} onNotebookChange={changed} onNotebookPreview={changed} backHref="/cabinet" backLabel="← В кабинет" cloudStatus={<>{data.student.login} · {topicTitle??data.topic?.title} · {status}{syncState.error&&syncState.dirty&&<button type="button" className="account-inline" onClick={flush}>Повторить сохранение</button>}</>}/>;
 }
@@ -84,7 +85,7 @@ export default function AccountApp({personalBoard=false}){
  const[session,setSession]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
  useEffect(()=>{accountRequest('session').then(setSession).catch(err=>setError(err.message)).finally(()=>setLoading(false));},[]);
  const user=session?.user,segments=location.pathname.split('/').filter(Boolean),board=personalBoard||segments[1]==='board',studentId=user?.role==='student'?user.id:segments[2];
- if(loading)return <p className="account-loading" role="status">Открываем кабинет…</p>;
+ if(loading)return <BoardLoading label={personalBoard||location.pathname.includes('/board')?'Открываем доску…':'Открываем кабинет…'} caption={personalBoard||location.pathname.includes('/board')?'Загружаем листы и записи':'Загружаем ваши данные'}/>;
  if(user&&board)return <AccountBoards id={personalBoard?user.id:segments[2]||user.id} studentMode={user.role==='student'}/>;
  async function logout(){
  const keys=Object.keys(localStorage).filter(key=>key.startsWith('uliana-account-'));
