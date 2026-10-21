@@ -214,8 +214,6 @@
 .board-group-bar > span:first-child { display:block; }
 
 .board-crop-stage { touch-action:none; user-select:none; cursor:crosshair; }
-.board-crop-stage [data-crop-corner] { cursor:nwse-resize; }
-.board-crop-stage [data-crop-corner="1"],.board-crop-stage [data-crop-corner="3"] { cursor:nesw-resize; }
 .board-inline-crop-action { cursor:pointer; outline:none; }
 .board-inline-crop-action:focus-visible > rect { stroke:#667f70; stroke-width:3px; }
 .board-inline-crop-action[aria-disabled="true"] { cursor:default; }

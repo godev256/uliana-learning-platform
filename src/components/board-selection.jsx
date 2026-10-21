@@ -1,3 +1,4 @@
+import BoardIcon from "./board-icons.jsx";
 import { isVisualization } from "./board-solids.js";
 import { shapeBounds } from "./board-shapes.jsx";
 
@@ -31,9 +32,10 @@ export function SelectionControls({ item, scale, onCrop }) {
       <circle cx={cx} cy={cy} r={22 * scale} fill="transparent" data-select-corner={index} data-resize-id={item.id} className={`board-selection-handle corner-${index}`} />
       <rect x={cx - 5 * scale} y={cy - 5 * scale} width={10 * scale} height={10 * scale} rx={scale} fill="#fbfaf6" stroke="#2f493f" strokeWidth={1.5 * scale} pointerEvents="none" />
     </g>)}
-    {item.type==="image"&&onCrop&&<g role="button" tabIndex={0} aria-label="Обрезать" className="board-image-crop-button" transform={`translate(${Math.max(8*scale,Math.min(1600-118*scale,x+width-110*scale))} ${Math.max(8*scale,y-52*scale)})`} onPointerDown={event=>event.stopPropagation()} onClick={event=>{event.stopPropagation();onCrop();}} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();event.stopPropagation();onCrop();}}}>
-      <rect width={110*scale} height={44*scale} rx={7*scale} fill="#fbfaf6" stroke="#91aa9a" strokeWidth={scale}/>
-      <text x={55*scale} y={22*scale} dominantBaseline="central" textAnchor="middle" fontSize={13*scale} fill="#2f493f" fontFamily="Golos Text, Arial, sans-serif" pointerEvents="none">Обрезать</text>
+    {item.type==="image"&&onCrop&&<g role="button" tabIndex={0} aria-label="Обрезать" className="board-image-crop-button" transform={`translate(${Math.max(8*scale,Math.min(1600-52*scale,x+width-44*scale))} ${Math.max(8*scale,y-52*scale)})`} onPointerDown={event=>event.stopPropagation()} onClick={event=>{event.stopPropagation();onCrop();}} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();event.stopPropagation();onCrop();}}}>
+      <title>Обрезать изображение</title>
+      <rect width={44*scale} height={44*scale} rx={7*scale} fill="#fbfaf6" stroke="#91aa9a" strokeWidth={scale}/>
+      <BoardIcon name="crop" x={12*scale} y={12*scale} width={20*scale} height={20*scale} color="#2f493f" pointerEvents="none"/>
     </g>}
   </g>;
 }
