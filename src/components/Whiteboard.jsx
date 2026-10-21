@@ -101,7 +101,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const pendingPage = useRef(null);
   const [past, setPast] = useState([]);
   const [future, setFuture] = useState([]);
-  const [tool, setTool] = useState("pen");
+  const [tool, setTool] = useState(studentMode ? "select" : "pen");
   const [color, setColor] = useState(colors[0][0]);
   const [size, setSize] = useState(3);
   const [highlightColor, setHighlightColor] = useState(highlightColors[0][0]);
@@ -206,7 +206,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   };
   const insertBlankPage = index => {
     const count = pageCountRef.current;
-    if (count >= 100 || !Number.isInteger(index) || index < 0 || index > count || gesture.current || expanding || importing.current) return;
+    if (studentMode || count >= 100 || !Number.isInteger(index) || index < 0 || index > count || gesture.current || expanding || importing.current) return;
     remember(itemsRef.current);
     update(itemsRef.current.map(item => item.page >= index ? {...item, page:item.page + 1} : item));
     pendingPage.current = index;
@@ -216,13 +216,14 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     setLineStarts({}); setPlaneStarts({}); setTool("pen");
   };
   const addPage = () => {
+    if(studentMode)return;
     if (pdfMode) setInsertPage(0);
     else insertBlankPage(pageCountRef.current);
   };
   const removePage = event => {
     event.preventDefault();
     const count=pageCountRef.current,from=deleteFrom-1,to=deleteTo-1;
-    if(!validDeletion || to>=count || deleteCount>=count)return;
+    if(studentMode || !validDeletion || to>=count || deleteCount>=count)return;
     setDeletePage(null);
     remember(itemsRef.current);
     const remaining=itemsRef.current.filter(item=>item.page<from||item.page>to).map(item=>item.page>to?{...item,page:item.page-deleteCount}:item);
@@ -325,7 +326,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         if(figuresMenu.current)figuresMenu.current.open=false;
         return;
       }
-      if ((event.key === "Delete" || event.key === "Backspace") && tool === "select" && !gesture.current && !renamePoint && deletePage === null && insertPage === null && !openFile && !cropId && !expanding) {
+      if ((event.key === "Delete" || event.key === "Backspace") && tool === "select" && !studentMode && !gesture.current && !renamePoint && deletePage === null && insertPage === null && !openFile && !cropId && !expanding) {
         const ids = new Set(selectedIds.length ? selectedIds : [selectedId]);
         const removable = itemsRef.current.filter(item => ids.has(item.id) && !item.background);
         if (removable.length) {
@@ -372,7 +373,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   };
   useEffect(() => {
     const copy = event => {
-      if (typingTarget(event.target) || tool !== "select" || gesture.current || renamePoint || deletePage !== null || insertPage !== null || openFile || cropId) return;
+      if (studentMode || typingTarget(event.target) || tool !== "select" || gesture.current || renamePoint || deletePage !== null || insertPage !== null || openFile || cropId) return;
       const ids = new Set(selectedIds.length ? selectedIds : [selectedId]);
       const selected = itemsRef.current.filter(item => ids.has(item.id) && !item.background);
       if (!selected.length || !event.clipboardData) return;
@@ -477,6 +478,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     if(expanding)return;
     const existing=itemsRef.current.filter(item=>item.documentId===file.id);
     if(existing.length===file.pageCount){setOpenFile(null);goToPage(Math.min(...existing.map(item=>item.page)));return;}
+    if(studentMode)return;
     const missing=Array.from({length:file.pageCount},(_,i)=>i+1).filter(number=>!existing.some(item=>item.sourcePage===number));
     if(pageCountRef.current+missing.length>100){setFileNotice("На доске помещается до 100 листов. Удалите лишние листы или просматривайте PDF в окне.");return;}
     setExpanding("Готовим страницы…");
@@ -562,6 +564,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     if (event.button !== 0 || gesture.current || cropId || event.target.closest("[data-brand-strip]")) return;
     event.preventDefault();
     const page = Number(event.currentTarget.dataset.pageIndex);
+    if(studentMode&&tool==="select"){setSelectedId(null);setSelectedIds([]);setSelectedAxesId(null);startPan(event);return;}
     if(tool==="select"){
       const previous=lastSelectionPress.current,now=performance.now();
       const twice=previous&&previous.page===page&&now-previous.time<450&&Math.hypot(event.clientX-previous.x,event.clientY-previous.y)<16;
@@ -583,6 +586,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     }
     const handle = event.target.closest("[data-resize-id]");
     const visualization = event.target.closest("[data-viz-body], [data-viz-header]");
+    if(studentMode&&visualization?.hasAttribute("data-viz-header")){startPan(event);return;}
     if (!handle && visualization && (tool === "select" || tool === "visualization")) {
       const id = visualization.closest("[data-shape-id]")?.dataset.shapeId;
       const item = itemsRef.current.find(item => item.id === id && item.page === page);
@@ -918,7 +922,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     </header>
     <div className="board-controls">
     <div className="board-toolbar" role="toolbar" aria-label="Инструменты доски">
-      <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(["pen","highlighter","eraser"].includes(value))drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-label={label} aria-haspopup={["pen","highlighter","eraser"].includes(value)?"dialog":undefined} aria-expanded={["pen","highlighter","eraser"].includes(value)?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть ручку или выделение" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(["pen","highlighter","eraser"].includes(value) ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span></button>)}
+      <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(["pen","highlighter","eraser"].includes(value))drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-label={label} aria-haspopup={["pen","highlighter","eraser"].includes(value)?"dialog":undefined} aria-expanded={["pen","highlighter","eraser"].includes(value)?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть ручку или выделение" : value === "select" && studentMode ? "Листать доску · масштаб двумя пальцами" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(["pen","highlighter","eraser"].includes(value) ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span></button>)}
         {!studentMode&&<><button type="button" className="board-tool" aria-label="Загрузить файл" title="Загрузить файл" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><BoardIcon name="upload"/></button>
         <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/></>}
         {!studentMode&&<details ref={figuresMenu} className="board-figures">
@@ -931,17 +935,17 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
           </div>
         </details>}
       </div>
-      {!["pen","highlighter","eraser"].includes(tool)&&<div className={`board-options ${optionsOpen ? "is-open" : ""}`} id="board-drawing-options">
+      {!(studentMode&&tool==="select")&&!["pen","highlighter","eraser"].includes(tool)&&<div className={`board-options ${optionsOpen ? "is-open" : ""}`} id="board-drawing-options">
         <div className="board-colors" role="group" aria-label={usingHighlighter ? "Цвет выделителя" : "Цвет"}>{(usingHighlighter ? highlightColors : colors).map(([value, label]) => <button key={value} type="button" style={{ "--swatch": value }} aria-label={label} aria-pressed={activeColor === value} onClick={() => editStyle("color", value)} />)}</div>
         <label className="board-size">Толщина <input type="range" aria-label={usingHighlighter ? "Толщина выделителя" : "Толщина ручки"} min={usingHighlighter ? 16 : 2} max={usingHighlighter ? 72 : 12} value={activeSize} onChange={event => editStyle("size", Number(event.target.value))} /><output>{activeSize}</output></label>
       </div>}
-      <button type="button" className="board-action board-grid-toggle" aria-pressed={grid} onClick={() => setGrid(!grid)}><BoardIcon name="grid"/><span>Клетка</span></button>
+      {!studentMode&&<button type="button" className="board-action board-grid-toggle" aria-pressed={grid} onClick={() => setGrid(!grid)}><BoardIcon name="grid"/><span>Клетка</span></button>}
     </div>
     <div className="board-mobile-view" role="group" aria-label="Масштаб листа">
       <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}><BoardIcon name="minus"/></button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title="Вернуть масштаб 75%" onClick={()=>changeZoom(BOARD_DEFAULT_ZOOM)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}><BoardIcon name="plus"/></button></div>
-      {!["pen","highlighter","eraser"].includes(tool)&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина <BoardIcon name={optionsOpen?"chevron-up":"chevron-down"}/></button>}
+      {!(studentMode&&tool==="select")&&!["pen","highlighter","eraser"].includes(tool)&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина <BoardIcon name={optionsOpen?"chevron-up":"chevron-down"}/></button>}
     </div>
-    {tool === "select" && !groupItems.length && (selectedSolid || selectedItem?.type==="attachment") && selectedItem?.type!=="image" && (!pdfMode||selectedItem?.type==="attachment") && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
+    {!studentMode && tool === "select" && !groupItems.length && (selectedSolid || selectedItem?.type==="attachment") && selectedItem?.type!=="image" && (!pdfMode||selectedItem?.type==="attachment") && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
       {selectedItem?.type==="attachment" ? <button className="board-action" onClick={()=>{setFileNotice("");setOpenFile(selectedItem.id);}}>Открыть файл</button> : <>
       <span>3D</span>
       <button className="board-action" type="button" disabled={!selectedSolid} aria-pressed={manipulation === "move"} onClick={()=>setManipulation("move")}>Перемещать</button>
@@ -950,9 +954,9 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       </>}
       <span>{selectedItem && isVisualization(selectedItem.type) ? "Внутри — вращать · за заголовок — перемещать · уголки — размер" : "Тяните внутри рамки · уголки меняют размер"}</span>
     </div>}
-    {tool==="select"&&groupItems.length>0&&<div className="board-selection-bar board-group-bar"><span>Выделено: {groupItems.length} · потяните внутри рамки</span><button type="button" className="board-action" onClick={()=>setSelectedIds([])}>Снять выделение</button></div>}
+    {!studentMode&&tool==="select"&&groupItems.length>0&&<div className="board-selection-bar board-group-bar"><span>Выделено: {groupItems.length} · потяните внутри рамки</span><button type="button" className="board-action" onClick={()=>setSelectedIds([])}>Снять выделение</button></div>}
     <div className="board-actions">
-      <div className="board-history" role="group" aria-label="История и листы"><button className="board-action" type="button" disabled={!past.length} aria-label="Отменить" title="Отменить" onClick={undo}><BoardIcon name="undo"/><span className="board-history-label"> Отменить</span></button><button className="board-action" type="button" disabled={!future.length} aria-label="Повторить" title="Повторить" onClick={redo}><BoardIcon name="redo"/><span className="board-history-label"> Повторить</span></button><button className="board-action" type="button" disabled={pageCount >= 100} onClick={addPage} aria-label="+ Добавить лист" title="Добавить лист"><BoardIcon name="plus"/><span>Добавить лист</span></button><button className="board-action" type="button" disabled={pageCount<=1} aria-label="Удалить лист" title="Удалить лист" onClick={()=>setDeletePage({mode:"single",from:String(pageCount),to:String(pageCount)})}><BoardIcon name="minus"/><span>Удалить лист</span></button></div>
+      <div className="board-history" role="group" aria-label="История и листы"><button className="board-action" type="button" disabled={!past.length} aria-label="Отменить" title="Отменить" onClick={undo}><BoardIcon name="undo"/><span className="board-history-label"> Отменить</span></button><button className="board-action" type="button" disabled={!future.length} aria-label="Повторить" title="Повторить" onClick={redo}><BoardIcon name="redo"/><span className="board-history-label"> Повторить</span></button>{!studentMode&&<><button className="board-action" type="button" disabled={pageCount >= 100} onClick={addPage} aria-label="+ Добавить лист" title="Добавить лист"><BoardIcon name="plus"/><span>Добавить лист</span></button><button className="board-action" type="button" disabled={pageCount<=1} aria-label="Удалить лист" title="Удалить лист" onClick={()=>setDeletePage({mode:"single",from:String(pageCount),to:String(pageCount)})}><BoardIcon name="minus"/><span>Удалить лист</span></button></>}</div>
       <div className="board-export"><button className="board-action board-pdf-button" type="button" aria-label="Скачать конспект PDF" title="Скачать конспект PDF" disabled={exporting} onClick={downloadPdf}><BoardIcon name="download"/>{exporting ? "Готовим…" : "Конспект"}</button></div>
     </div>
     </div>
@@ -967,15 +971,15 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         <rect width={PAGE_WIDTH} height={PAGE_HEIGHT} fill="#ffffff" />
         {grid && (!pdfMode || !items.some(item=>item.page===page && item.background)) && <rect data-page-grid="true" width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={`url(#board-grid-${page})`} />}
         {[...displayedItems.filter(item=>item.page===page && item.id!==draft?.id),...(draft?.page===page ? [draft] : [])].sort((a,b)=>Number(b.type==="image")-Number(a.type==="image")).map(item=><Shape key={item.id} item={item} erase={inkItem(item) && !item.background && item.id!==draft?.id && tool==="eraser"} onFileOpen={id=>{setFileNotice("");setOpenFile(id);}} selectable={tool==="select" || tool==="axes" && item.type==="axes"} visualization={visualizationProps(item)}/>)}
-        {tool === "select" && displayedItems.filter(item => item.page === page && !item.background && !isVisualization(item.type)).map(item => <SelectionHitArea key={item.id} item={draft?.id === item.id ? draft : item} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
-        {tool === "select" && !cropId && (draft?.id === selectedId ? [draft] : items.filter(item => item.id === selectedId)).filter(item => item.page === page).map(item => <SelectionControls key={item.id} item={item} onCrop={()=>setCropId(item.id)} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
-        {tool==="select"&&groupItems.length>0&&groupItems[0].page===page&&(()=>{
+        {!studentMode && tool === "select" && displayedItems.filter(item => item.page === page && !item.background && !isVisualization(item.type)).map(item => <SelectionHitArea key={item.id} item={draft?.id === item.id ? draft : item} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
+        {!studentMode && tool === "select" && !cropId && (draft?.id === selectedId ? [draft] : items.filter(item => item.id === selectedId)).filter(item => item.page === page).map(item => <SelectionControls key={item.id} item={item} onCrop={()=>setCropId(item.id)} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
+        {!studentMode&&tool==="select"&&groupItems.length>0&&groupItems[0].page===page&&(()=>{
           const box=groupBounds(groupItems),scale=PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH),padding=6*scale;
           return <g data-selection-controls="true"><rect data-group-selection="true" x={box.x-padding} y={box.y-padding} width={box.width+padding*2} height={box.height+padding*2} fill="#2f493f" fillOpacity=".045" stroke="#2f493f" strokeWidth={scale} strokeDasharray={`${6*scale} ${4*scale}`} className="board-group-selection"/><text x={box.x} y={Math.max(16*scale,box.y-12*scale)} fill="#2f493f" fontSize={12*scale} pointerEvents="none">Выделено: {groupItems.length}</text></g>;
         })()}
-        {cropId&&items.filter(item=>item.id===cropId&&item.type==="image"&&item.page===page).map(item=><ImageCrop key={item.id} item={item} scale={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)} pageWidth={PAGE_WIDTH} pageHeight={PAGE_HEIGHT} onApply={applyImageCrop} onClose={()=>setCropId(null)}/>)}
+        {!studentMode&&cropId&&items.filter(item=>item.id===cropId&&item.type==="image"&&item.page===page).map(item=><ImageCrop key={item.id} item={item} scale={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)} pageWidth={PAGE_WIDTH} pageHeight={PAGE_HEIGHT} onApply={applyImageCrop} onClose={()=>setCropId(null)}/>)}
         {marquee?.page===page&&<rect data-selection-controls="true" data-marquee="true" x={marquee.x} y={marquee.y} width={marquee.width} height={marquee.height} fill="#537361" fillOpacity=".1" stroke="#2f493f" strokeWidth={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)} strokeDasharray="8 6" pointerEvents="none"/>}
-        {tool === "axes" && (draft?.type === "axes" ? [draft] : items.filter(item => item.id === selectedAxesId)).filter(item => item.page === page && item.points.length === 2).map(item => <g key={item.id} data-axis-controls="true">
+        {!studentMode && tool === "axes" && (draft?.type === "axes" ? [draft] : items.filter(item => item.id === selectedAxesId)).filter(item => item.page === page && item.points.length === 2).map(item => <g key={item.id} data-axis-controls="true">
           {item.points.map(([x, y], index) => {
             const scale = PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH);
             return <g key={index}>
@@ -993,11 +997,11 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       </div>
       </div>
     </div>
-    <footer className="board-footer"><span role="status">{status}</span><span>{tool === "select" ? "Потяните на пустом месте для выделения рамкой · двойное нажатие и перетягивание тоже выделяет область" : tool === "eraser" ? (eraserMode==="partial"?"Стирает участок под кружком · настройки по кнопке ластика":"Стирает штрих целиком · настройки по кнопке ластика") : tool === "highlighter" ? "Проведите по записи, чтобы выделить её цветом" : tool === "axes" ? "Оси X и Y · потяните по листу; кружки по углам меняют размер" : activeFigure ? `${activeFigure[1]} · потяните по листу, чтобы нарисовать` : tool === "visualization" ? "Действия внутри 3D-окна · ладошка перемещает окно" : "Рисуйте мышью, пальцем или стилусом"}</span></footer>
+    <footer className="board-footer"><span role="status">{status}</span><span>{tool === "select" && studentMode ? "Тяните лист для прокрутки · два пальца — масштаб" : tool === "select" ? "Потяните на пустом месте для выделения рамкой · двойное нажатие и перетягивание тоже выделяет область" : tool === "eraser" ? (eraserMode==="partial"?"Стирает участок под кружком · настройки по кнопке ластика":"Стирает штрих целиком · настройки по кнопке ластика") : tool === "highlighter" ? "Проведите по записи, чтобы выделить её цветом" : tool === "axes" ? "Оси X и Y · потяните по листу; кружки по углам меняют размер" : activeFigure ? `${activeFigure[1]} · потяните по листу, чтобы нарисовать` : tool === "visualization" ? (studentMode?"Действия внутри 3D-окна · ладошка листает доску":"Действия внутри 3D-окна · ладошка перемещает окно") : "Рисуйте мышью, пальцем или стилусом"}</span></footer>
     </div>
     {fileNotice && <div className="board-file-notice" role="status"><span>{fileNotice}</span>{!fileBusy&&!expanding&&<button aria-label="Закрыть сообщение" onClick={()=>setFileNotice("")}><BoardIcon name="close"/></button>}</div>}
 
-    {viewedFile && <AttachmentViewer key={viewedFile.id} item={viewedFile} onRename={studentMode?undefined:renameAttachment} onClose={()=>setOpenFile(null)} onExpand={expandFile} expanding={expanding} expanded={items.filter(item=>item.documentId===viewedFile.id).length===viewedFile.pageCount}/>}
+    {viewedFile && <AttachmentViewer key={viewedFile.id} item={viewedFile} onRename={studentMode?undefined:renameAttachment} onClose={()=>setOpenFile(null)} onExpand={!studentMode||items.filter(item=>item.documentId===viewedFile.id).length===viewedFile.pageCount?expandFile:undefined} expanding={expanding} expanded={items.filter(item=>item.documentId===viewedFile.id).length===viewedFile.pageCount}/>}
     {renamePoint && <div className="board-dialog-backdrop"><form className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="rename-point-title" onSubmit={savePointName}>
       <h2 id="rename-point-title">Название точки</h2>
       <label>Имя <input aria-label="Название точки" autoFocus onFocus={event=>event.target.select()} maxLength={8} value={pointName} aria-invalid={!!renameError} aria-describedby="point-name-help" onChange={event=>{setPointName(event.target.value);setRenameError("");}} /></label>
@@ -1005,7 +1009,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       <p id="point-name-help" role={renameError ? "alert" : undefined}>{renameError || "До 8 букв, цифр или штрихов. Вершины фигуры не переименовываются."}</p>
       <div><button className="board-action" type="button" onClick={()=>setRenamePoint(null)}>Отмена</button><button className="board-action" type="submit">Сохранить</button></div>
     </form></div>}
-    {insertPage !== null && <div className="board-dialog-backdrop"><form className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="insert-page-title" onSubmit={event=>{event.preventDefault();insertBlankPage(Number(insertPage));}}>
+    {!studentMode && insertPage !== null && <div className="board-dialog-backdrop"><form className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="insert-page-title" onSubmit={event=>{event.preventDefault();insertBlankPage(Number(insertPage));}}>
       <h2 id="insert-page-title">Лист в клетку для заметок</h2>
       <label>Куда вставить лист<select aria-label="Куда вставить лист" autoFocus value={insertPage} onChange={event=>setInsertPage(Number(event.target.value))}>
         {Array.from({length:pageCount},(_,index)=><option key={index} value={index}>{index===0 ? "В начало доски" : `Перед листом ${index+1}`}</option>)}
@@ -1014,7 +1018,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       <p>Страницы PDF и записи на них сохранятся. Вставку можно отменить.</p>
       <div><button className="board-action" type="button" onClick={()=>setInsertPage(null)}>Отмена</button><button className="board-action" type="submit">Вставить лист</button></div>
     </form></div>}
-    {deletePage !== null && <div className="board-dialog-backdrop"><form className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-page-title" onSubmit={removePage}>
+    {!studentMode && deletePage !== null && <div className="board-dialog-backdrop"><form className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-page-title" onSubmit={removePage}>
       <h2 id="delete-page-title">{deletePage.mode==="single" || deleteFrom===deleteTo ? `Удалить лист №${deleteFrom}?` : `Удалить листы №${deleteFrom}–${deleteTo}?`}</h2>
       <div className="board-delete-modes" role="group" aria-label="Какие листы удалить">
         <button className="board-action" type="button" aria-pressed={deletePage.mode==="single"} onClick={()=>setDeletePage(value=>({...value,mode:"single"}))}>Один лист</button>
