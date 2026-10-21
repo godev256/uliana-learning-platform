@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import SiteMenu from "./components/SiteMenu.jsx";
 import BoardIcon from "./components/board-icons.jsx";
 
 /**
@@ -1491,7 +1490,7 @@ function App() {
       <header className="site-header">
         <a className="site-brand" href="#start">ulianaa-learning.pro<span>Математика с Ульяной</span></a>
         <nav className="site-header-nav" aria-label="Основная навигация"><a href="#about">О занятиях</a><a href="#reviews">Отзывы</a><a href="#pricing">Стоимость</a></nav>
-        <div className="site-header-actions"><a className="site-cabinet-link" href="/cabinet">Мой кабинет <BoardIcon name="arrow-right"/></a><SiteMenu /></div>
+        <div className="site-header-actions"><a className="site-cabinet-link" href="/cabinet">Мой кабинет <BoardIcon name="arrow-right"/></a></div>
       </header>
       <a className="skip-link" href="#main-content">
         К основному содержанию
@@ -1933,7 +1932,16 @@ function App() {
               </h2>
             </div>
 
-            <BookingForm />
+            <div className="home-contact-form"><BookingForm /></div>
+            <a
+              className="home-contact-phone pill-link pill-link--solid"
+              href={CONTACTS.telegram}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Записаться на бесплатную диагностику
+              <span aria-hidden="true">↗</span>
+            </a>
           </motion.div>
         </section>
       </main>

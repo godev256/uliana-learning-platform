@@ -429,6 +429,10 @@ select.field-input {
 .site-header .site-menu-toggle { border-radius:8px; }
 .home-hero { gap:43px; padding:32px 43px 0; align-items:stretch; }
 .home-hero-photo { border-radius:16px; }
+.home-contact-phone { display:none; }
+@media(min-width:1024px){
+ .home-hero-photo { left:12px; }
+}
 .home-hero-content { min-width:0; }
 .home-hero-copy { padding:28px 0; gap:24px; }
 .home-hero-eyebrow { font-size:12px; line-height:1.4; color:#667f70; }
@@ -467,6 +471,9 @@ select.field-input {
 /* Phone-only adjustments keep the approved desktop composition intact. */
 .home-copy-phone { display:none; }
 @media(max-width:640px){
+ .home-contact-form { display:none; }
+ .home-contact-phone { display:inline-flex; width:100%; padding:16px; font-size:11px; line-height:1.6; letter-spacing:1px; }
+ #contact > div { gap:22px; }
  .home-copy-full { display:none; }
  .home-copy-phone { display:inline; }
  .home-hero-photo { order:0; width:min(100%,280px); width:min(100%,33svh,300px); aspect-ratio:1; justify-self:center; border-radius:12px; }
