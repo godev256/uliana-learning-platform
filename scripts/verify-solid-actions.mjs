@@ -30,26 +30,26 @@ try {
   const moved=await item(type);assert.notDeepEqual(moved.points,original.points);assert.deepEqual(moved.rotation,original.rotation,'Hand must move the window without rotation');
   await shape.getByRole('button',{name:'Точка на ребре',exact:true}).click();await clickEdge(shape,0,.3);await clickEdge(shape,2,.65);
   const marked=await item(type);assert.equal(marked.edgePoints.length,2,`${type}: all models must support edge points`);assert.deepEqual(marked.edgePoints.map(x=>x.label),['M','N']);
-  await shape.getByRole('button',{name:'Прямая по точкам',exact:true}).click();await clickMark(shape,marked.edgePoints[0].id);await clickMark(shape,marked.edgePoints[1].id);
-  const connected=await item(type);assert.equal(connected.spatialLines.length,1);assert.equal(await shape.locator('[data-space-line]').count(),1);
+  await shape.getByRole('button',{name:'Отрезок по точкам',exact:true}).click();await clickMark(shape,marked.edgePoints[0].id);await clickMark(shape,marked.edgePoints[1].id);
+  const connected=await item(type);assert.equal(connected.spatialLines.length,1);assert.equal(await shape.locator('[data-space-segment]').count(),1);
   await page.getByRole('button',{name:'Отменить',exact:true}).click();await page.waitForFunction(id=>JSON.parse(localStorage.getItem('uliana-whiteboard-v2')).items.find(x=>x.id===id).spatialLines.length===0,type);
   await page.getByRole('button',{name:'Повторить',exact:true}).click();await page.waitForFunction(id=>JSON.parse(localStorage.getItem('uliana-whiteboard-v2')).items.find(x=>x.id===id).spatialLines.length===1,type);
-  const before=await shape.locator('[data-space-line]').getAttribute('d');await shape.getByRole('button',{name:'Вращать',exact:true}).click();await drag(shape.locator('[data-viz-body]'),40,15);
+  const before=await shape.locator('[data-space-segment]').getAttribute('d');await shape.getByRole('button',{name:'Вращать',exact:true}).click();await drag(shape.locator('[data-viz-body]'),40,15);
   const rotated=await item(type);assert.notDeepEqual(rotated.rotation,moved.rotation);assert.deepEqual(rotated.points,moved.points);assert.deepEqual(rotated.edgePoints,marked.edgePoints);assert.deepEqual(rotated.spatialLines,connected.spatialLines);
-  assert.notEqual(await shape.locator('[data-space-line]').getAttribute('d'),before,'Spatial lines must follow model rotation');
+  assert.notEqual(await shape.locator('[data-space-segment]').getAttribute('d'),before,'Spatial lines must follow model rotation');
   const p=projectSolid(rotated.type,rotated.rotation,{x:0,y:0,width:800,height:600},true),line=clippedSpatialLine(rotated,rotated.spatialLines[0],p.vertices,{x:-100,y:-100,width:1200,height:1000});assert.ok(line);
   assert.deepEqual(line.a,spatialPoint(rotated,rotated.spatialLines[0].through[0],p.vertices));
   await shape.getByRole('button',{name:'Сбросить ракурс',exact:true}).click();await frame();assert.deepEqual((await item(type)).rotation,[0,0,0]);
  }
  const cube=card('cube');await cube.scrollIntoViewIfNeeded();
- await cube.getByRole('button',{name:'Прямая по точкам',exact:true}).click();
+ await cube.getByRole('button',{name:'Отрезок по точкам',exact:true}).click();
  const vertex=cube.locator('[data-vertex="A"]');await vertex.click();await cube.locator('[data-vertex="C₁"]').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('uliana-whiteboard-v2')).items[0].spatialLines.length===2);
  const saved=await stored();await page.reload();assert.deepEqual(await stored(),saved,'Marks and spatial lines must survive reload');
  await cube.scrollIntoViewIfNeeded();await page.screenshot({path:'playwright-report/compact-spatial-solids.png'});
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'Скачать конспект PDF',exact:true}).click();await(await download).saveAs('.local/spatial-solids.pdf');
- await page.getByRole('button',{name:'Ластик',exact:true}).click();await clickMark(cube,saved.items[0].edgePoints[0].id);
+ await cube.getByRole('button',{name:'Удалить построение',exact:true}).click();await clickMark(cube,saved.items[0].edgePoints[0].id);
  const erased=await item('cube');assert.equal(erased.edgePoints.length,1);assert.equal(erased.spatialLines.length,1,'Deleting a point must remove only lines depending on that point');assert.equal(await cube.count(),1);
  await page.getByRole('button',{name:'Отменить',exact:true}).click();await frame();assert.equal((await item('cube')).spatialLines.length,2);
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
- console.log('Spatial solids checks passed: large-window insertion, ordered vertices on all five solids, hand movement, rotation, edge points and infinite spatial lines on all solids, vertex lines, reset, history, persistence, dependent-line cleanup and PDF.');
+ console.log('Spatial solids checks passed: large-window insertion, ordered vertices on all five solids, hand movement, rotation, edge points and finite segments on all solids, vertex lines, reset, history, persistence, dependent-line cleanup and PDF.');
 } finally {await browser.close();}

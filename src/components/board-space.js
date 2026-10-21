@@ -43,8 +43,22 @@ export function nearestProjectedEdge(model,position) {
   }
   return nearest;
 }
+export const validSpatialRange = range => Array.isArray(range)&&range.length===2&&range.every(Number.isFinite)&&range[0]>=-20&&range[0]<=0&&range[1]>=1&&range[1]<=20;
+export function extendSpatialLine(item,source,id){
+ let line;
+ if(source.kind==="line")line=(item.spatialLines??[]).find(row=>row.id===source.id);
+ else if(source.kind==="edge"&&item.type!=="viz-space"&&isEdge(item,source.edge)){
+  const through=source.edge.map(index=>({kind:"vertex",index}));
+  line=(item.spatialLines??[]).find(row=>row.kind==="edge-extension"&&row.through.every(ref=>through.some(other=>sameReference(ref,other))))??{id,kind:"edge-extension",through};
+ }
+ if(!line||!spatialLinePoints(item,line))return null;
+ const changed={...line,range:line.range??[-.35,1.35]};if(changed.kind==="segment")delete changed.kind;
+ const exists=(item.spatialLines??[]).some(row=>row.id===changed.id);
+ if(!exists&&(item.spatialLines??[]).length>=200)return null;
+ return {lineId:changed.id,item:sanitizeConstructions({...item,spatialLines:exists?item.spatialLines.map(row=>row.id===changed.id?changed:row):[...(item.spatialLines??[]),changed]})};
+}
 const validLineKind = (item,line) => !line.kind || line.kind==="segment" || line.kind==="edge-extension" && line.through.every(ref=>ref.kind==="vertex") && solidGeometry(item.type).faces.some(face=>face.some((vertex,index)=>vertex===line.through[0].index && (face[(index+1)%face.length]===line.through[1].index || face[(index+face.length-1)%face.length]===line.through[1].index)));
-export const sanitizeSpatialLines = item => Array.isArray(item.spatialLines) ? item.spatialLines.slice(0,200).filter(line=>line && typeof line.id==="string" && (line.kind==="parallel" ? !!spatialLinePoints(item,line) : validSpatialPair(item,line.through) && validLineKind(item,line))) : [];
+export const sanitizeSpatialLines = item => Array.isArray(item.spatialLines) ? item.spatialLines.slice(0,200).filter(line=>line && typeof line.id==="string" && (line.range===undefined||validSpatialRange(line.range)) && (line.kind==="parallel" ? !!spatialLinePoints(item,line) : validSpatialPair(item,line.through) && validLineKind(item,line))) : [];
 
 // Resolve directions in world coordinates so parallel constructions survive camera rotation.
 export function spatialLinePoints(item,line,projection=null,seen=new Set()) {
@@ -75,12 +89,13 @@ export function spatialLinePoints(item,line,projection=null,seen=new Set()) {
 
 // Clip infinite lines and finite segments to the model window.
 export function clippedSpatialLine(item,line,vertices,box) {
+  if(line.range!==undefined&&!validSpatialRange(line.range))return null;
   const endpoints=spatialLinePoints(item,line,vertices);
   if(!endpoints)return null;
   const [a,b]=endpoints;
   if (!a || !b || Math.hypot(a[0]-b[0],a[1]-b[1])<1e-6) return null;
   const delta=b.map((value,index)=>value-a[index]);
-  let start=line.kind==="segment" ? 0 : -Infinity,end=line.kind==="segment" ? 1 : Infinity;
+  let start=line.range?.[0]??(line.kind==="segment" ? 0 : -Infinity),end=line.range?.[1]??(line.kind==="segment" ? 1 : Infinity);
   for (let axis=0;axis<2;axis++) {
     const min=axis===0 ? box.x : box.y, max=min+(axis===0 ? box.width : box.height);
     if (Math.abs(delta[axis])<1e-9) { if (a[axis]<min || a[axis]>max) return null; continue; }
@@ -120,6 +135,7 @@ export function spatialIntersection(item,first,second) {
   const u=sub3(p2,p),v=sub3(q2,q),w=sub3(q,p),normal=cross3(u,v),denom=dot3(normal,normal);
   if (denom<=1e-12*dot3(u,u)*dot3(v,v)) return null;
   const t=dot3(cross3(w,v),normal)/denom,s=dot3(cross3(w,u),normal)/denom;
+  if(first.range&&(t<first.range[0]-1e-7||t>first.range[1]+1e-7)||second.range&&(s<second.range[0]-1e-7||s>second.range[1]+1e-7))return null;
   if ((first.kind==="segment" && (t< -1e-7 || t>1+1e-7)) || (second.kind==="segment" && (s< -1e-7 || s>1+1e-7))) return null;
   const a=p.map((value,index)=>value+t*u[index]),b=q.map((value,index)=>value+s*v[index]);
   if (Math.hypot(...sub3(a,b))>1e-7*Math.max(1,Math.hypot(...u),Math.hypot(...v))) return null;

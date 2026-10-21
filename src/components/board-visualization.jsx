@@ -13,13 +13,13 @@ export function visualizationLayout(item, {x,y,width,height}) {
 }
 
 // Labels and edge points share the model projection and therefore follow every rotation.
-export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1, erase=false, lineStart=null, planeStart=[], workingPlane="xy" }) {
+export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1, erase=false, lineStart=null, extensionId=null, planeStart=[], workingPlane="xy" }) {
   const {x,y,width,height} = box;
   const deleting=erase || mode==="delete";
   const {header,actions,planeChooser,inset,model} = visualizationLayout(item,box);
   const fontSize = Math.min(40,width*.032);
   const buttonFont=Math.min(24,width*.02);
-  const buttons = [["rotate","Вращать"],["reset","Сбросить ракурс"],["point","Точка на ребре"],["segment","Отрезок по точкам"],["space-line","Прямая по точкам"],["intersection","Точка пересечения"],["plane","Плоскость через 3 точки"],["rename","Переименовать точку"],["parallel","Параллельная"]];
+  const buttons = [["rotate","Вращать"],["reset","Сбросить ракурс"],["point","Точка на ребре"],["segment","Отрезок по точкам"],["extend","Продлить"],["intersection","Точка пересечения"],["plane","Плоскость через 3 точки"],["rename","Переименовать точку"],["parallel","Параллельная"]];
   const actionRows=3;
   const contentBox={x:x+inset*.3,y:y+header+actions+planeChooser+inset*.3,width:width-inset*.6,height:height-header-actions-planeChooser-inset*.9};
   const planes=(item.spatialPlanes??[]).map(plane=>{
@@ -47,7 +47,7 @@ export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1
       </g>;})}
       <path d={`M${x},${y+header+actions} H${x+width}`} stroke="#d8e3dc" strokeWidth="2" />
     </g>
-    <g data-viz-body="true" style={{cursor:mode==="delete" ? "cell" : (mode==="point" || mode==="space-line" || mode==="segment" || mode==="intersection" || mode==="plane" || mode==="parallel" || mode==="rename") ? "var(--board-pen-cursor)" : "grab"}}>
+    <g data-viz-body="true" style={{cursor:mode==="delete" ? "cell" : (mode==="extend" || mode==="point" || mode==="space-line" || mode==="segment" || mode==="intersection" || mode==="plane" || mode==="parallel" || mode==="rename") ? "var(--board-pen-cursor)" : "grab"}}>
       <rect x={x+2} y={y+header+actions+planeChooser+2} width={width-4} height={height-header-actions-planeChooser-4} fill="transparent" />
       {planes.filter(plane=>plane.patch.length>=3).map(plane=><g key={plane.id} data-spatial-plane-id={plane.id}>
         <polygon data-plane-patch="true" points={plane.patch.map(p=>p.join(",")).join(" ")} fill="#aa70b7" fillOpacity=".14" stroke="#9c69a8" strokeWidth="2" strokeDasharray="10 7" pointerEvents={deleting ? "all" : "none"} />
@@ -73,13 +73,14 @@ export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1
           {gaps.length>0 && <defs><mask id={maskId} maskUnits="userSpaceOnUse" x={contentBox.x} y={contentBox.y} width={contentBox.width} height={contentBox.height}>
             <rect {...contentBox} fill="white"/>{gaps.map(([cx,cy],index)=><circle key={index} data-depth-gap="true" cx={cx} cy={cy} r={Math.max(item.size*2.4,5*scale)} fill="black"/>)}
           </mask></defs>}
-          {(deleting || mode==="parallel") && <path d={`M${segment.ends[0]} L${segment.ends[1]}`} fill="none" stroke="transparent" strokeWidth={16*scale} />}
+          {(deleting || mode==="parallel" || mode==="extend") && <path d={`M${segment.ends[0]} L${segment.ends[1]}`} fill="none" stroke="transparent" strokeWidth={16*scale} />}
           <g mask={gaps.length?`url(#${maskId})`:undefined}>
           {line.kind==="segment" ? <path data-space-segment="true" d={`M${segment.ends[0]} L${segment.ends[1]}`} fill="none" stroke={lineColor} strokeWidth={Math.max(4,item.size)} pointerEvents="none" /> : <>
             <path data-space-line="true" data-edge-extension={line.kind==="edge-extension" ? "true" : undefined} d={paths.dashed} fill="none" stroke={lineColor} strokeOpacity=".65" strokeWidth={Math.max(2,item.size*.8)} strokeDasharray="10 7" pointerEvents="none" />
             {paths.solid && <path d={paths.solid} fill="none" stroke={lineColor} strokeWidth={Math.max(4,item.size)} pointerEvents="none" />}
           </>}
           </g>
+          {mode==="extend"&&extensionId===line.id&&line.range&&segment.ends.map(([cx,cy],end)=><g key={end} data-viz-controls="true" data-extend-line-id={line.id} data-extend-end={end} style={{cursor:"ew-resize"}}><circle cx={cx} cy={cy} r={16*scale} fill="transparent"/><circle cx={cx} cy={cy} r={5*scale} fill="white" stroke={lineColor} strokeWidth={2*scale} pointerEvents="none"/></g>)}
         </g>;
       })}
       {mode==="point" && item.type!=="viz-space" && !deleting && model.edges.map(({pair:[a,b]})=><path key={`${a}-${b}`} data-viz-edge={`${a},${b}`} data-viz-controls="true" d={`M${model.vertices[a]} L${model.vertices[b]}`} fill="none" stroke="transparent" strokeWidth={20*scale} pointerEvents="none" />)}
@@ -113,7 +114,7 @@ export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1
         return projected && <circle key={index} data-viz-controls="true" data-plane-selection="true" cx={projected[0]} cy={projected[1]} r={fontSize*.3} fill="none" stroke="#a164a7" strokeWidth="4" pointerEvents="none" />;
       })}
       {lineStart && spatialPoint(item,lineStart,model) && <circle data-viz-controls="true" cx={spatialPoint(item,lineStart,model)[0]} cy={spatialPoint(item,lineStart,model)[1]} r={fontSize*.3} fill="none" stroke="#b77924" strokeWidth="4" pointerEvents="none" />}
-      <text data-viz-controls="true" x={x+width/2} y={y+height-inset*.35} textAnchor="middle" fill="#63766b" fontSize={fontSize*.7} pointerEvents="none">{mode==="delete" ? "Нажмите на прямую, отрезок, точку или плоскость" : mode==="parallel" ? (lineStart ? "Выберите прямую, отрезок, ребро или ось" : "Выберите точку, затем направление") : mode==="move" ? "Потяните внутри окна, чтобы переместить его" : (mode==="space-line" || mode==="segment") ? (lineStart ? "Выберите вторую точку" : "Выберите две точки или вершины") : mode==="plane" ? (planeStart.length===2 ? "Выберите третью точку вне прямой первых двух" : `Выберите ${planeStart.length ? "вторую" : "первую"} из трёх точек`) : mode==="intersection" ? "Нажмите на пересечение прямых или прямой с ребром" : mode==="rename" ? "Нажмите на вашу точку, чтобы изменить имя" : mode==="point" ? (item.type==="viz-space" ? "Нажмите на ось X, Y или Z · шаг 0,25" : "Нажмите на ребро — точка закрепится на нём") : "Потяните внутри окна, чтобы вращать фигуру"}</text>
+      <text data-viz-controls="true" x={x+width/2} y={y+height-inset*.35} textAnchor="middle" fill="#63766b" fontSize={fontSize*.7} pointerEvents="none">{mode==="extend" ? "Нажмите на отрезок или ребро · потяните за концы продления" : mode==="delete" ? "Нажмите на прямую, отрезок, точку или плоскость" : mode==="parallel" ? (lineStart ? "Выберите прямую, отрезок, ребро или ось" : "Выберите точку, затем направление") : mode==="move" ? "Потяните внутри окна, чтобы переместить его" : (mode==="space-line" || mode==="segment") ? (lineStart ? "Выберите вторую точку" : "Выберите две точки или вершины") : mode==="plane" ? (planeStart.length===2 ? "Выберите третью точку вне прямой первых двух" : `Выберите ${planeStart.length ? "вторую" : "первую"} из трёх точек`) : mode==="intersection" ? "Нажмите на пересечение прямых или прямой с ребром" : mode==="rename" ? "Нажмите на вашу точку, чтобы изменить имя" : mode==="point" ? (item.type==="viz-space" ? "Нажмите на ось X, Y или Z · шаг 0,25" : "Нажмите на ребро — точка закрепится на нём") : "Потяните внутри окна, чтобы вращать фигуру"}</text>
     </g>
   </g>;
 }
