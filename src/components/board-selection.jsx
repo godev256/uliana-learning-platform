@@ -27,14 +27,14 @@ export function SelectionControls({ item, scale, onCrop }) {
   const { x, y, width, height } = shapeBounds(item);
   return <g data-selection-controls="true">
     <rect x={x - 5 * scale} y={y - 5 * scale} width={width + 10 * scale} height={height + 10 * scale} fill="none" stroke="#2f493f" strokeWidth={scale} strokeDasharray={`${5 * scale} ${4 * scale}`} pointerEvents="none" />
-    {item.type==="image"&&onCrop&&<g role="button" tabIndex={0} aria-label="Обрезать" className="board-image-crop-button" transform={`translate(${Math.max(8*scale,Math.min(1600-118*scale,x+width-110*scale))} ${Math.max(8*scale,y-52*scale)})`} onPointerDown={event=>event.stopPropagation()} onClick={event=>{event.stopPropagation();onCrop();}} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();event.stopPropagation();onCrop();}}}>
-      <rect width={110*scale} height={44*scale} rx={7*scale} fill="#fbfaf6" stroke="#91aa9a" strokeWidth={scale}/>
-      <text x={55*scale} y={22*scale} dominantBaseline="central" textAnchor="middle" fontSize={13*scale} fill="#2f493f" fontFamily="Golos Text, Arial, sans-serif" pointerEvents="none">Обрезать</text>
-    </g>}
     {[[x,y], [x+width,y], [x+width,y+height], [x,y+height]].map(([cx,cy], index) => <g key={index}>
       <circle cx={cx} cy={cy} r={22 * scale} fill="transparent" data-select-corner={index} data-resize-id={item.id} className={`board-selection-handle corner-${index}`} />
       <rect x={cx - 5 * scale} y={cy - 5 * scale} width={10 * scale} height={10 * scale} rx={scale} fill="#fbfaf6" stroke="#2f493f" strokeWidth={1.5 * scale} pointerEvents="none" />
     </g>)}
+    {item.type==="image"&&onCrop&&<g role="button" tabIndex={0} aria-label="Обрезать" className="board-image-crop-button" transform={`translate(${Math.max(8*scale,Math.min(1600-118*scale,x+width-110*scale))} ${Math.max(8*scale,y-52*scale)})`} onPointerDown={event=>event.stopPropagation()} onClick={event=>{event.stopPropagation();onCrop();}} onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();event.stopPropagation();onCrop();}}}>
+      <rect width={110*scale} height={44*scale} rx={7*scale} fill="#fbfaf6" stroke="#91aa9a" strokeWidth={scale}/>
+      <text x={55*scale} y={22*scale} dominantBaseline="central" textAnchor="middle" fontSize={13*scale} fill="#2f493f" fontFamily="Golos Text, Arial, sans-serif" pointerEvents="none">Обрезать</text>
+    </g>}
   </g>;
 }
 

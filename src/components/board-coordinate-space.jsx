@@ -15,7 +15,7 @@ export function CoordinateSpace({model,workingPlane,fontSize,clipBox,clipId}) {
     {["X","Y","Z"].map((label,axis)=>{
       const endpoint=value=>model.projectPoint([0,1,2].map(index=>index===axis?value:0));
       const start=endpoint(-range),end=endpoint(range),dx=end[0]-origin[0],dy=end[1]-origin[1],length=Math.hypot(dx,dy)||1,ux=dx/length,uy=dy/length,arrow=fontSize*.45;
-      return <g key={axis} data-coordinate-axis={label} stroke="#6d7e78" strokeWidth="3" fill="none">
+      return <g key={axis} data-coordinate-axis={label} stroke={["#667f70","#6b849b","#9a705c"][axis]} strokeWidth="3" fill="none">
         <path d={`M${start} L${origin}`} strokeDasharray="10 8" strokeOpacity=".5"/><path d={`M${origin} L${end}`}/>
         <path d={`M${end[0]-ux*arrow-uy*arrow*.4},${end[1]-uy*arrow+ux*arrow*.4} L${end} L${end[0]-ux*arrow+uy*arrow*.4},${end[1]-uy*arrow-ux*arrow*.4}`}/>
         <text x={end[0]+ux*fontSize*.7} y={end[1]+uy*fontSize*.7} dominantBaseline="central" textAnchor="middle" fontSize={fontSize*.85} fill="#39574b" stroke="white" strokeWidth="4" paintOrder="stroke">{label}</text>

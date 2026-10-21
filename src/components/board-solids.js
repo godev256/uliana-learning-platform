@@ -89,5 +89,5 @@ export function projectSolid(type, rotation, box, stable = false, extent = 3) {
     }
   }
   const path = visible => [...edges.values()].filter(edge=>edge.visible===visible).map(({pair:[a,b]})=>`M${projected[a]} L${projected[b]}`).join(" ");
-  return { extent, projectPoint, vertices:projected, edges:[...edges.values()], visible:path(true), hidden:path(false), faces: faces.sort((a,b)=>a.depth-b.depth) };
+  return { extent, projectPoint, depthOf:vertex=>transform(vertex)[2], vertices:projected, edges:[...edges.values()], visible:path(true), hidden:path(false), faces: faces.sort((a,b)=>a.depth-b.depth) };
 }

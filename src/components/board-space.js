@@ -234,3 +234,24 @@ export function nearestCoordinateAxis(model,position) {
   }
   return nearest;
 }
+
+// A screen crossing is not necessarily a 3D intersection. Mark only the rear
+// line at crossings whose world positions differ, using the current camera depth.
+export function spatialDepthGaps(item,model,box) {
+ const rows=(item.spatialLines??[]).map(line=>({line,segment:clippedSpatialLine(item,line,model,box),world:spatialLinePoints(item,line),gaps:[]})).filter(row=>row.segment&&row.world);
+ const cross2=(a,b)=>a[0]*b[1]-a[1]*b[0];
+ for(let i=0;i<rows.length;i++)for(let j=i+1;j<rows.length;j++){
+  const first=rows[i],second=rows[j],a=first.segment.a,b=second.segment.a;
+  const u=first.segment.b.map((value,k)=>value-a[k]),v=second.segment.b.map((value,k)=>value-b[k]),delta=b.map((value,k)=>value-a[k]);
+  const denominator=cross2(u,v);if(Math.abs(denominator)<1e-8)continue;
+  const t=cross2(delta,v)/denominator,s=cross2(delta,u)/denominator;
+  if(t<first.segment.start||t>first.segment.end||s<second.segment.start||s>second.segment.end)continue;
+  const worldAt=(row,value)=>row.world[0].map((coordinate,k)=>coordinate+(row.world[1][k]-coordinate)*value);
+  const p=worldAt(first,t),q=worldAt(second,s);
+  // True intersections stay connected; only separated lines receive a gap.
+  if(Math.hypot(...p.map((value,k)=>value-q[k]))<1e-6)continue;
+  const depth=model.depthOf(p)-model.depthOf(q);if(Math.abs(depth)<1e-6)continue;
+  (depth<0?first:second).gaps.push(a.map((value,k)=>value+u[k]*t));
+ }
+ return rows;
+}

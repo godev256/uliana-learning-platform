@@ -161,8 +161,8 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const selectedSolid = tool === "select" && selectedItem && isSolid(selectedItem.type) && !isVisualization(selectedItem.type);
 
   const usingHighlighter = tool === "highlighter" || tool === "select" && selectedItem?.type === "highlighter";
-  const activeColor = usingHighlighter ? (tool === "select" ? selectedItem.color : highlightColor) : color;
-  const activeSize = usingHighlighter ? (tool === "select" ? selectedItem.size : highlightSize) : size;
+  const activeColor = tool === "select" && selectedItem ? selectedItem.color : usingHighlighter ? highlightColor : color;
+  const activeSize = tool === "select" && selectedItem ? selectedItem.size : usingHighlighter ? highlightSize : size;
   const displayedItems=items.map(item=>groupDraft?.find(row=>row.id===item.id)??item);
   const groupItems=displayedItems.filter(item=>selectedIds.includes(item.id));
   const groupBounds=rows=>{
@@ -170,13 +170,16 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     return {x,y,width:Math.max(...boxes.map(box=>box.x+box.width))-x,height:Math.max(...boxes.map(box=>box.y+box.height))-y};
   };
   useEffect(()=>{setSelectedIds(pastedGroupSelection.current ?? []);pastedGroupSelection.current=null;setGroupDraft(null);setMarquee(null);lastSelectionPress.current=null;},[tool]);
+  useEffect(()=>{if(tool!=="select")setCropId(null);},[tool]);
   const update = (value) => { itemsRef.current = value; setItems(value); };
   const updatePageCount = count => { pageCountRef.current = count; setPageCount(count); };
   const snapshot = () => ({ items: itemsRef.current, pageCount: pageCountRef.current });
   const remember = (savedItems, count = pageCountRef.current) => { setPast(history => [...history.slice(-49), { items: savedItems, pageCount: count }]); setFuture([]); };
   const editStyle = (key, value) => {
-    if (usingHighlighter) { if (key === "color") setHighlightColor(value); else setHighlightSize(value); }
-    else { if (key === "color") setColor(value); else setSize(value); }
+    if (tool !== "select") {
+      if (usingHighlighter) { if (key === "color") setHighlightColor(value); else setHighlightSize(value); }
+      else { if (key === "color") setColor(value); else setSize(value); }
+    }
     if (tool !== "select") return;
     const selected = itemsRef.current.find(item => item.id === selectedId);
     if (!selected || selected[key] === value) return;
@@ -554,7 +557,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     if(replacements.size)update(itemsRef.current.flatMap(item=>replacements.get(item.id)??[item]));
   };
   const start = event => {
-    if (event.button !== 0 || gesture.current || event.target.closest("[data-brand-strip]")) return;
+    if (event.button !== 0 || gesture.current || cropId || event.target.closest("[data-brand-strip]")) return;
     event.preventDefault();
     const page = Number(event.currentTarget.dataset.pageIndex);
     if(tool==="select"){
@@ -714,8 +717,6 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       const item = itemsRef.current.find(item => item.id === id && item.page === page);
       flushSync(()=>setSelectedId(item?.id ?? null));
       if (!item) { startPan(event); return; }
-      if (item.type === "highlighter") { setHighlightColor(item.color); setHighlightSize(item.size); }
-      else { setColor(item.color); setSize(item.size); }
       event.currentTarget.setPointerCapture(event.pointerId);
       gesture.current = { pointerId: event.pointerId, before: itemsRef.current, item, original: item, start: point(event), clientStart:[event.clientX,event.clientY], mode: handle ? "resize" : isSolid(item.type) && manipulation === "rotate" ? "rotate" : "move", corner: Number(handle?.dataset.selectCorner) };
       setDraft(item);
@@ -932,11 +933,12 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         {grid && (!pdfMode || !items.some(item=>item.page===page && item.background)) && <rect data-page-grid="true" width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={`url(#board-grid-${page})`} />}
         {[...displayedItems.filter(item=>item.page===page && item.id!==draft?.id),...(draft?.page===page ? [draft] : [])].sort((a,b)=>Number(b.type==="image")-Number(a.type==="image")).map(item=><Shape key={item.id} item={item} erase={inkItem(item) && !item.background && item.id!==draft?.id && tool==="eraser"} onFileOpen={id=>{setFileNotice("");setOpenFile(id);}} selectable={tool==="select" || tool==="axes" && item.type==="axes"} visualization={visualizationProps(item)}/>)}
         {tool === "select" && displayedItems.filter(item => item.page === page && !item.background && !isVisualization(item.type)).map(item => <SelectionHitArea key={item.id} item={draft?.id === item.id ? draft : item} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
-        {tool === "select" && (draft?.id === selectedId ? [draft] : items.filter(item => item.id === selectedId)).filter(item => item.page === page).map(item => <SelectionControls key={item.id} item={item} onCrop={()=>setCropId(item.id)} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
+        {tool === "select" && !cropId && (draft?.id === selectedId ? [draft] : items.filter(item => item.id === selectedId)).filter(item => item.page === page).map(item => <SelectionControls key={item.id} item={item} onCrop={()=>setCropId(item.id)} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
         {tool==="select"&&groupItems.length>0&&groupItems[0].page===page&&(()=>{
           const box=groupBounds(groupItems),scale=PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH),padding=6*scale;
           return <g data-selection-controls="true"><rect data-group-selection="true" x={box.x-padding} y={box.y-padding} width={box.width+padding*2} height={box.height+padding*2} fill="#2f493f" fillOpacity=".045" stroke="#2f493f" strokeWidth={scale} strokeDasharray={`${6*scale} ${4*scale}`} className="board-group-selection"/><text x={box.x} y={Math.max(16*scale,box.y-12*scale)} fill="#2f493f" fontSize={12*scale} pointerEvents="none">Выделено: {groupItems.length}</text></g>;
         })()}
+        {cropId&&items.filter(item=>item.id===cropId&&item.type==="image"&&item.page===page).map(item=><ImageCrop key={item.id} item={item} scale={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)} pageWidth={PAGE_WIDTH} pageHeight={PAGE_HEIGHT} onApply={applyImageCrop} onClose={()=>setCropId(null)}/>)}
         {marquee?.page===page&&<rect data-selection-controls="true" data-marquee="true" x={marquee.x} y={marquee.y} width={marquee.width} height={marquee.height} fill="#537361" fillOpacity=".1" stroke="#2f493f" strokeWidth={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)} strokeDasharray="8 6" pointerEvents="none"/>}
         {tool === "axes" && (draft?.type === "axes" ? [draft] : items.filter(item => item.id === selectedAxesId)).filter(item => item.page === page && item.points.length === 2).map(item => <g key={item.id} data-axis-controls="true">
           {item.points.map(([x, y], index) => {
@@ -959,7 +961,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     <footer className="board-footer"><span role="status">{status}</span><span>{tool === "select" ? "Потяните на пустом месте для выделения рамкой · двойное нажатие и перетягивание тоже выделяет область" : tool === "eraser" ? (eraserMode==="partial"?"Стирает участок под кружком · настройки по кнопке ластика":"Стирает штрих целиком · настройки по кнопке ластика") : tool === "highlighter" ? "Проведите по записи, чтобы выделить её цветом" : tool === "axes" ? "Оси X и Y · потяните по листу; кружки по углам меняют размер" : activeFigure ? `${activeFigure[1]} · потяните по листу, чтобы нарисовать` : tool === "visualization" ? "Действия внутри 3D-окна · ладошка перемещает окно" : "Рисуйте мышью, пальцем или стилусом"}</span></footer>
     </div>
     {fileNotice && <div className="board-file-notice" role="status"><span>{fileNotice}</span>{!fileBusy&&!expanding&&<button aria-label="Закрыть сообщение" onClick={()=>setFileNotice("")}><BoardIcon name="close"/></button>}</div>}
-    {cropId&&items.find(item=>item.id===cropId&&item.type==="image")&&<ImageCrop key={cropId} item={items.find(item=>item.id===cropId)} onApply={applyImageCrop} onClose={()=>setCropId(null)}/>}
+
     {viewedFile && <AttachmentViewer key={viewedFile.id} item={viewedFile} onRename={studentMode?undefined:renameAttachment} onClose={()=>setOpenFile(null)} onExpand={expandFile} expanding={expanding} expanded={items.filter(item=>item.documentId===viewedFile.id).length===viewedFile.pageCount}/>}
     {renamePoint && <div className="board-dialog-backdrop"><form className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="rename-point-title" onSubmit={savePointName}>
       <h2 id="rename-point-title">Название точки</h2>

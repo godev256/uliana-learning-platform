@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright';
+import {projectSolid} from '../src/components/board-solids.js';
+import {spatialDepthGaps} from '../src/components/board-space.js';
+const ref=id=>({kind:'free',id});
+const freePoints=[{id:'a',label:'A',position:[-2,0,1]},{id:'b',label:'B',position:[2,0,1]},{id:'c',label:'C',position:[0,-2,-1]},{id:'d',label:'D',position:[0,2,-1]}];
+const item={id:'depth-demo',type:'viz-space',page:0,size:4,color:'#2f493f',points:[[80,80],[1520,980]],rotation:[0,0,0],freePoints,spatialLines:[{id:'upper',through:[ref('a'),ref('b')]},{id:'lower',through:[ref('c'),ref('d')]}]};
+const box={x:0,y:0,width:800,height:600};
+const gaps=(book,rotation)=>spatialDepthGaps(book,projectSolid(book.type,rotation,box,true),box);
+assert.equal(gaps(item,[0,0,0]).find(row=>row.line.id==='lower').gaps.length,1,'Rear skew line breaks at the screen crossing');
+assert.equal(gaps(item,[180,0,0]).find(row=>row.line.id==='upper').gaps.length,1,'Rotating to the other side swaps front and rear');
+const intersecting={...item,freePoints:freePoints.map(point=>({...point,position:[point.position[0],point.position[1],0]}))};
+assert.equal(gaps(intersecting,[0,0,0]).flatMap(row=>row.gaps).length,0,'True 3D intersections remain connected');
+const parallel={...item,freePoints:freePoints.map((point,index)=>({...point,position:index<2?point.position:[index===2?-2:2,1,-1]}))};
+assert.equal(gaps(parallel,[0,0,0]).flatMap(row=>row.gaps).length,0,'Parallel screen lines never receive crossing gaps');
+const browser=await chromium.launch();
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:1100},reducedMotion:'reduce'}),errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.goto('http://127.0.0.1:5173/board');await page.evaluate(book=>localStorage.setItem('uliana-whiteboard-v2',JSON.stringify(book)),{pageCount:1,items:[item]});await page.reload();
+ const card=page.locator('[data-shape-id="depth-demo"]');await card.scrollIntoViewIfNeeded();
+ assert.equal(await card.locator('[data-depth-gap]').count(),1);assert.equal(await card.locator('[data-depth-guides] path').count(),4);
+ assert.notEqual(await card.locator('[data-space-line]').nth(0).getAttribute('stroke'),await card.locator('[data-space-line]').nth(1).getAttribute('stroke'));
+ await page.screenshot({path:'playwright-report/board-depth-skew.png'});
+ await card.getByRole('button',{name:'Вращать',exact:true}).click();
+ const body=await card.locator('[data-viz-body]').boundingBox(),before=await card.locator('[data-space-line]').first().getAttribute('d');
+ await page.mouse.move(body.x+body.width*.5,body.y+body.height*.5);await page.mouse.down();await page.mouse.move(body.x+body.width*.5+60,body.y+body.height*.5+45,{steps:12});await page.mouse.up();
+ await page.waitForFunction(()=>JSON.parse(localStorage.getItem('uliana-whiteboard-v2')).items[0].rotation.some(value=>value!==0));
+ assert.notEqual(await card.locator('[data-space-line]').first().getAttribute('d'),before);
+ assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('uliana-whiteboard-v2')).items[0].freePoints),freePoints,'Rotation preserves exact coordinates');
+ const rotated=await page.evaluate(()=>JSON.parse(localStorage.getItem('uliana-whiteboard-v2')).items[0].rotation);
+ await page.reload();assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('uliana-whiteboard-v2')).items[0].rotation),rotated);assert.deepEqual(errors,[]);
+ console.log('PASS: depth ordering swaps with camera, real intersections remain intact, parallel lines have no false gaps; guides, distinct colors, rotation and persistence work.');
+}finally{await browser.close();}

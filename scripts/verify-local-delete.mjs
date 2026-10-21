@@ -6,7 +6,7 @@ const browser=await chromium.launch();
 try {
  const page=await browser.newPage({viewport:{width:1440,height:1100},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:5173/board');await page.evaluate(item=>localStorage.setItem('uliana-whiteboard-v2',JSON.stringify({pageCount:1,items:[item]})),fixture());await page.reload();
  const card=page.locator('[data-shape-id="cube"]'),stored=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('uliana-whiteboard-v2')).items[0]),frame=()=>page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
- assert.equal(await card.locator('[data-space-line]').first().getAttribute('stroke'),'#c2ccd4');
+ assert.equal(await card.locator('[data-space-line]').first().getAttribute('stroke'),'#466d85');
  await card.getByRole('button',{name:'Удалить построение',exact:true}).click();assert.equal(await card.getByRole('button',{name:'Удалить построение',exact:true}).getAttribute('aria-pressed'),'true');
  async function clickActual(selector) {
   const target=card.locator(selector).first();await target.scrollIntoViewIfNeeded();await frame();

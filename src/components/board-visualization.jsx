@@ -1,7 +1,7 @@
 import { CoordinateSpace } from "./board-coordinate-space.jsx";
 import { projectSolid, solidType, vertexNames, vertexOrder } from "./board-solids.js";
 
-import { clippedSpatialLine, spatialPoint, spatialIntersections, planeGeometry, clipPolygon, edgePreservingLinePaths } from "./board-space.js";
+import { clippedSpatialLine, spatialPoint, spatialIntersections, planeGeometry, clipPolygon, edgePreservingLinePaths, spatialDepthGaps } from "./board-space.js";
 
 const labels = { space:"Координаты XYZ", cube: "Куб", cuboid: "Параллелепипед", tetrahedron: "Тетраэдр", prism: "Призма", pyramid: "Пирамида" };
 export function visualizationLayout(item, {x,y,width,height}) {
@@ -26,6 +26,8 @@ export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1
     const geometry=planeGeometry(item,plane.through);
     return geometry ? {...plane,patch:clipPolygon(geometry.patch.map(model.projectPoint),contentBox),section:geometry.section.map(model.projectPoint)} : null;
   }).filter(Boolean);
+  const depthRows=spatialDepthGaps(item,model,contentBox);
+  const lineColors=["#466d85","#9a5a44","#667f70","#806491"];
   const center = [model.vertices.reduce((s,p)=>s+p[0],0)/model.vertices.length,model.vertices.reduce((s,p)=>s+p[1],0)/model.vertices.length];
   return <g data-shape-id={item.id} data-shape-type={item.type} pointerEvents="all" fontFamily="Golos Text, Arial, sans-serif">
     <rect x={x} y={y} width={width} height={height} rx={Math.min(32,width*.025)} fill="#ffffff" stroke="#c4d6cd" strokeWidth="3" />
@@ -58,16 +60,26 @@ export function BoardVisualization({ item, box, mode="rotate", onAction, scale=1
       {planes.filter(plane=>item.type!=="viz-space" && plane.section.length>=3).map(plane=><g key={plane.id} data-spatial-plane-id={plane.id}>
         <polygon data-plane-section="true" points={plane.section.map(p=>p.join(",")).join(" ")} fill="#bf78ad" fillOpacity=".26" stroke="#8c427e" strokeWidth={Math.max(3,item.size)} strokeLinejoin="round" pointerEvents={deleting ? "all" : "none"} />
       </g>)}
-      {[...(item.spatialLines??[])].sort((a,b)=>Number(a.kind==="segment")-Number(b.kind==="segment")).map(line=>{
-        const segment=clippedSpatialLine(item,line,model,{x:x+inset*.3,y:y+header+actions+planeChooser+inset*.3,width:width-inset*.6,height:height-header-actions-planeChooser-inset*.9});
-        if (!segment) return null;
-        const paths=edgePreservingLinePaths(item,line,segment);
+      {item.type==="viz-space" && <g data-depth-guides="true" pointerEvents="none" clipPath={`url(#xyz-clip-${item.id})`}>
+        {(item.freePoints??[]).filter(point=>Math.abs(point.position[2])>1e-8).map(point=>{
+          const top=model.projectPoint(point.position),foot=model.projectPoint([point.position[0],point.position[1],0]);
+          return <g key={point.id}><path d={`M${top} L${foot}`} fill="none" stroke="#8ea69a" strokeWidth="2" strokeDasharray="6 6"/><circle cx={foot[0]} cy={foot[1]} r={fontSize*.1} fill="#eef5f0" stroke="#8ea69a" strokeWidth="2"/></g>;
+        })}
+      </g>}
+      {depthRows.sort((a,b)=>Number(a.line.kind==="segment")-Number(b.line.kind==="segment")).map(({line,segment,gaps})=>{
+        const paths=edgePreservingLinePaths(item,line,segment),lineColor=lineColors[(item.spatialLines??[]).findIndex(row=>row.id===line.id)%lineColors.length];
+        const maskId=`line-depth-${item.id}-${line.id}`;
         return <g key={line.id} data-spatial-line-id={line.id}>
+          {gaps.length>0 && <defs><mask id={maskId} maskUnits="userSpaceOnUse" x={contentBox.x} y={contentBox.y} width={contentBox.width} height={contentBox.height}>
+            <rect {...contentBox} fill="white"/>{gaps.map(([cx,cy],index)=><circle key={index} data-depth-gap="true" cx={cx} cy={cy} r={Math.max(item.size*2.4,5*scale)} fill="black"/>)}
+          </mask></defs>}
           {(deleting || mode==="parallel") && <path d={`M${segment.ends[0]} L${segment.ends[1]}`} fill="none" stroke="transparent" strokeWidth={16*scale} />}
-          {line.kind==="segment" ? <path data-space-segment="true" d={`M${segment.ends[0]} L${segment.ends[1]}`} fill="none" stroke="#74879a" strokeWidth={item.size} pointerEvents="none" /> : <>
-            <path data-space-line="true" data-edge-extension={line.kind==="edge-extension" ? "true" : undefined} d={paths.dashed} fill="none" stroke="#c2ccd4" strokeWidth={Math.max(2,item.size*.8)} strokeDasharray="10 7" pointerEvents="none" />
-            {paths.solid && <path d={paths.solid} fill="none" stroke="#c2ccd4" strokeWidth={item.size} pointerEvents="none" />}
+          <g mask={gaps.length?`url(#${maskId})`:undefined}>
+          {line.kind==="segment" ? <path data-space-segment="true" d={`M${segment.ends[0]} L${segment.ends[1]}`} fill="none" stroke={lineColor} strokeWidth={Math.max(4,item.size)} pointerEvents="none" /> : <>
+            <path data-space-line="true" data-edge-extension={line.kind==="edge-extension" ? "true" : undefined} d={paths.dashed} fill="none" stroke={lineColor} strokeOpacity=".65" strokeWidth={Math.max(2,item.size*.8)} strokeDasharray="10 7" pointerEvents="none" />
+            {paths.solid && <path d={paths.solid} fill="none" stroke={lineColor} strokeWidth={Math.max(4,item.size)} pointerEvents="none" />}
           </>}
+          </g>
         </g>;
       })}
       {mode==="point" && item.type!=="viz-space" && !deleting && model.edges.map(({pair:[a,b]})=><path key={`${a}-${b}`} data-viz-edge={`${a},${b}`} data-viz-controls="true" d={`M${model.vertices[a]} L${model.vertices[b]}`} fill="none" stroke="transparent" strokeWidth={20*scale} pointerEvents="none" />)}

@@ -48,7 +48,7 @@ try {
   await select(id);
   const shape=paper.locator(`[data-shape-id="${id}"]`);
   const before=await shape.locator('path:not([stroke-dasharray])').getAttribute('d');
-  await page.getByRole('button',{name:'⟳ Вращать',exact:true}).click();
+  await page.getByRole('button',{name:'Вращать',exact:true}).click();
   await drag(page.locator(`[data-select-id="${id}"]`),55,30);
   await page.waitForFunction(id=>JSON.parse(localStorage.getItem('uliana-whiteboard-v2')).items.find(x=>x.id===id).rotation?.some(x=>Math.abs(x)>1),id);
   assert.notEqual(await shape.locator('path:not([stroke-dasharray])').getAttribute('d'),before,`${id} must change view while rotating`);
