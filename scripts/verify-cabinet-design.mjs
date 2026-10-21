@@ -47,7 +47,10 @@ try{
   assert.equal(await page.locator('.site-cabinet-link').getAttribute('href'),'/cabinet');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Home fits all viewports');
   if(width===390)assert.ok(await page.locator('.home-hero .pill-link--solid').evaluate(el=>el.getBoundingClientRect().bottom<844),'Booking action is visible on the first phone screen');
-  await page.getByRole('button',{name:'Меню сайта',exact:true}).click();await page.getByRole('navigation',{name:'Меню сайта',exact:true}).waitFor();await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('button',{name:'Меню сайта',exact:true}).count(),0,'Header uses the cabinet link without a redundant menu');
+  assert.equal(await page.locator('.home-contact-form').isVisible(),width>640,'Full booking form is shown above phone widths');
+  assert.equal(await page.locator('.home-contact-phone').isVisible(),width<=640,'Phones offer direct diagnostic booking');
+  assert.equal(await page.locator('.home-contact-phone').getAttribute('href'),'https://t.me/ulianaa713');
   await page.screenshot({path:`playwright-report/design/home-${width}.png`,fullPage:true});
   await context.close();
  }
