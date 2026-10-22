@@ -148,7 +148,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     }
     cancelStrokeFrame();
     gesture.current = null; lastSelectionPress.current=null; setDraft(null); setGroupDraft(null); setMarquee(null); setLineStarts({}); setPlaneStarts({});
-  },defaultZoom);
+  },defaultZoom,studentMode&&defaultZoom===1?96:0);
   const sheets = useRef([]);
   const figuresMenu = useRef(null);
   const activeFigure = figures.find(([value]) => value === tool);
@@ -924,6 +924,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     <div className="board-controls">
     <div className="board-toolbar" role="toolbar" aria-label="Инструменты доски">
       <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(["pen","highlighter","eraser"].includes(value))drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-label={label} aria-haspopup={["pen","highlighter","eraser"].includes(value)?"dialog":undefined} aria-expanded={["pen","highlighter","eraser"].includes(value)?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть ручку или выделение" : value === "select" && studentMode ? "Листать доску · масштаб двумя пальцами" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(["pen","highlighter","eraser"].includes(value) ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span></button>)}
+        {studentMode&&<button className="board-tool board-touch-download" type="button" aria-label="Скачать доску PDF" title="Скачать доску PDF" disabled={exporting} onClick={downloadPdf}><BoardIcon name="download"/></button>}
         {!studentMode&&<><button type="button" className="board-tool" aria-label="Загрузить файл" title="Загрузить файл" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><BoardIcon name="upload"/></button>
         <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/></>}
         {!studentMode&&<details ref={figuresMenu} className="board-figures">
@@ -964,7 +965,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     <div className={`board-workspace${topicsPanel?" has-topics":""}`}>
       {topicsPanel}
       <div className="board-sheet-viewport" ref={viewportRef} {...captureHandlers}>
-      <div className="board-pages" ref={contentRef}>
+      <div className="board-sheet-stage"><div className="board-pages" ref={contentRef}>
       {Array.from({ length: pageCount }, (_, page) => <section className="board-page" key={page} aria-label={`Лист ${page + 1}`}>
       <h2 className="board-page-label">Лист {page + 1} <span>A4</span></h2>
       <svg ref={node => { sheets.current[page] = node; }} data-page-index={page} className={`board-paper ${tool === "highlighter" ? "is-highlighting" : ""} ${tool === "eraser" ? "is-erasing" : tool === "select" ? `is-selecting ${manipulation === "rotate" ? "is-rotating" : ""}` : ""}`} viewBox={`0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}`} aria-label={`Поле для рисования, лист ${page + 1}`} onPointerDown={start} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish}>
@@ -995,7 +996,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         </g>
       </svg>
       </section>)}
-      </div>
+      </div></div>
       </div>
     </div>
     <footer className="board-footer"><span role="status">{cloudStatus?"Доска привязана к аккаунту · сохранение на сервере":status}</span><span>{tool === "select" && studentMode ? "Тяните лист для прокрутки · два пальца — масштаб" : tool === "select" ? "Потяните на пустом месте для выделения рамкой · двойное нажатие и перетягивание тоже выделяет область" : tool === "eraser" ? (eraserMode==="partial"?"Стирает участок под кружком · настройки по кнопке ластика":"Стирает штрих целиком · настройки по кнопке ластика") : tool === "highlighter" ? "Проведите по записи, чтобы выделить её цветом" : tool === "axes" ? "Оси X и Y · потяните по листу; кружки по углам меняют размер" : activeFigure ? `${activeFigure[1]} · потяните по листу, чтобы нарисовать` : tool === "visualization" ? (studentMode?"Действия внутри 3D-окна · ладошка листает доску":"Действия внутри 3D-окна · ладошка перемещает окно") : "Рисуйте мышью, пальцем или стилусом"}</span></footer>
