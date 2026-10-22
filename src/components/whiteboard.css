@@ -496,7 +496,7 @@
  .whiteboard.is-student .board-touch-download { display:inline-flex !important; }
  .whiteboard.is-student .board-export { display:none; }
  .whiteboard.is-student .board-toolbar { max-height:calc(100% - 116px); }
- .whiteboard.is-student .board-sheet-stage { display:flow-root; box-sizing:content-box; width:max(var(--board-view-width),calc(var(--board-view-width) * var(--board-zoom))); min-height:100%; padding-inline:96px; }
+ .whiteboard.is-student .board-sheet-stage { display:flow-root; box-sizing:content-box; width:max(var(--board-view-width),calc(var(--board-view-width) * var(--board-zoom))); min-height:100%; padding-inline:96px; padding-top:96px; }
 }
 @media(max-height:500px) and (max-width:1024px){
  .whiteboard.is-student .board-tools { gap:2px; }

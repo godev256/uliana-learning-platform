@@ -11,7 +11,7 @@ try{for(const engine of [chromium,webkit]){
   const context=await browser.newContext({viewport:{width,height},hasTouch:true,isMobile:true}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   let remote={pageCount:3,items:[]},revision=0;
   await page.route('**/api/account?**',route=>{const action=new URL(route.request().url()).searchParams.get('action');if(action==='board'&&route.request().method()==='POST'){remote=route.request().postDataJSON().notebook;revision++;}return route.fulfill({json:action==='session'?{user:{id:'pupil-touch',login:'pupil',role:'student'}}:action==='topics'?{topics:[{id:'main',title:'Текущий урок',kind:'board'},{id:'geometry',title:'Геометрия',kind:'board'}]}:action==='board'?{notebook:remote,revision,student:{login:'pupil'},topic:{id:'main',kind:'board'}}:{}});});
-  await page.goto(origin+'/cabinet/board/pupil-touch');await page.locator('.board-paper').first().waitFor();await page.waitForFunction(()=>document.querySelector('.board-sheet-viewport').scrollLeft===96);
+  await page.goto(origin+'/cabinet/board/pupil-touch');await page.locator('.board-paper').first().waitFor();await page.waitForFunction(()=>document.querySelector('.board-sheet-viewport').scrollLeft===96&&document.querySelector('.board-sheet-viewport').scrollTop===96);
   const viewport=page.locator('.board-sheet-viewport'),tools=page.locator('.board-toolbar'),zoom=page.locator('.board-zoom-reset');
   const box=await viewport.boundingBox(),toolbar=await tools.boundingBox();assert.ok(box.width>=width-2,'Full screen width for sheet');assert.ok(box.height>=height-46,'Only compact header reserves vertical space');assert.equal(toolbar.width,44);assert.ok(toolbar.x>=box.x&&toolbar.x<box.x+60,'Tools float over the paper');
   for(const name of ['Ладошка','Ручка','Ластик','Отменить','Приблизить лист']){const b=await page.getByRole('button',{name,exact:true}).boundingBox();assert.ok(b&&b.width>=44&&b.height>=44&&b.y+b.height<=height,`${name} is touch-sized and onscreen`);}
@@ -21,11 +21,14 @@ try{for(const engine of [chromium,webkit]){
   const paper=page.locator('.board-paper').first();const originalX=(await paper.boundingBox()).x;
   await panX(78);assert.ok((await paper.boundingBox()).x>=originalX+70,'Left edge moves out from underneath toolbar');
   await panX(-156);assert.ok((await paper.boundingBox()).x<originalX-50,'Sheet also moves left');await panX(78);
+  const panY=async delta=>{const x=width*.5,y=box.y+Math.min(160,box.height*.45);await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x,y+delta,{steps:8});await page.mouse.up();await page.evaluate(()=>new Promise(requestAnimationFrame));};
+  const originalY=(await paper.boundingBox()).y;await panY(88);assert.ok((await paper.boundingBox()).y>=originalY+80,'First sheet pulls down below topic button');await panY(-88);
   const frame=()=>page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   // Real multi-touch input checks sheet-only pinch; the overlay must remain stationary.
   if(engine===chromium){const cdp=await context.newCDPSession(page),y=box.y+box.height*.5,x=width*.5;
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:x-35,y},{x:x+35,y}]});for(let i=1;i<=8;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x-35-i*7,y},{x:x+35+i*7,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await frame();assert.ok(parseInt(await zoom.textContent())>150,'Pinch enlarges paper');await cdp.detach();
   }else{await page.getByRole('button',{name:'Приблизить лист',exact:true}).click();await frame();}
+  await panY(4000);assert.ok((await paper.boundingBox()).y>=box.y+90,'Top reserve remains available after zoom');await panY(-96);
   const after=await tools.boundingBox();assert.deepEqual(after,toolbar,'Tools do not zoom or reserve a side column');
   await page.getByRole('button',{name:'Ручка',exact:true}).tap();await page.getByRole('button',{name:'Закрыть настройки',exact:true}).tap();
   const x=width*.5,y=box.y+Math.min(200,box.height*.45);
