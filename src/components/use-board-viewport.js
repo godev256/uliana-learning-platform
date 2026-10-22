@@ -4,11 +4,11 @@ export const BOARD_DEFAULT_ZOOM=.75;
 export const BOARD_MIN_ZOOM=.5;
 const clampZoom=value=>Math.max(BOARD_MIN_ZOOM,Math.min(4,value));
 
-export function useBoardViewport(cancelDrawing){
+export function useBoardViewport(cancelDrawing,initialZoom=BOARD_DEFAULT_ZOOM){
  const viewportRef=useRef(null),contentRef=useRef(null),cancelRef=useRef(cancelDrawing);
  cancelRef.current=cancelDrawing;
- const[zoom,setZoom]=useState(BOARD_DEFAULT_ZOOM),[viewportWidth,setViewportWidth]=useState(0);
- const zoomRef=useRef(BOARD_DEFAULT_ZOOM),renderedZoom=useRef(BOARD_DEFAULT_ZOOM),anchor=useRef(null),frame=useRef(null),touches=useRef(new Map()),pinch=useRef(null),pan=useRef(null),safariGesture=useRef(null);
+ const[zoom,setZoom]=useState(initialZoom),[viewportWidth,setViewportWidth]=useState(0);
+ const zoomRef=useRef(initialZoom),renderedZoom=useRef(initialZoom),anchor=useRef(null),frame=useRef(null),touches=useRef(new Map()),pinch=useRef(null),pan=useRef(null),safariGesture=useRef(null);
  const worldAt=client=>{const bounds=contentRef.current.getBoundingClientRect();return [(client[0]-bounds.left)/renderedZoom.current,(client[1]-bounds.top)/renderedZoom.current];};
  function applyAnchor(){
   const node=viewportRef.current,content=contentRef.current,saved=anchor.current;if(!node||!content||!saved)return;

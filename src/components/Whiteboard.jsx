@@ -140,6 +140,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const drawingButtons=useRef({});
   const closeToolSettings=useCallback(restoreFocus=>{setSettingsTool(null);if(restoreFocus)drawingButtons.current[settingsTool]?.focus();},[settingsTool]);
   useEffect(()=>{if(settingsTool&&settingsTool!==tool)setSettingsTool(null);},[tool,settingsTool]);
+  const [defaultZoom]=useState(()=>studentMode&&window.matchMedia(BOARD_TOUCH_QUERY).matches?1:BOARD_DEFAULT_ZOOM);
   const {viewportRef,contentRef,viewportWidth,zoom,changeZoom,captureHandlers,startPan,movePan,endPan} = useBoardViewport(() => {
     if (gesture.current) {
       onNotebookPreview?.({items:gesture.current.before,pageCount:pageCountRef.current});
@@ -147,7 +148,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     }
     cancelStrokeFrame();
     gesture.current = null; lastSelectionPress.current=null; setDraft(null); setGroupDraft(null); setMarquee(null); setLineStarts({}); setPlaneStarts({});
-  });
+  },defaultZoom);
   const sheets = useRef([]);
   const figuresMenu = useRef(null);
   const activeFigure = figures.find(([value]) => value === tool);
@@ -912,7 +913,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     finally { setExporting(false); }
   };
 
-  return <main className="whiteboard" style={{"--board-zoom":zoom,"--board-view-width":viewportWidth?`${viewportWidth}px`:"100%","--board-eraser-cursor":eraserCursor(eraserSize)}}>
+  return <main className={`whiteboard${studentMode?" is-student":""}`} style={{"--board-zoom":zoom,"--board-view-width":viewportWidth?`${viewportWidth}px`:"100%","--board-eraser-cursor":eraserCursor(eraserSize)}}>
     {settingsTool&&<DrawingToolSettings eraser={settingsTool==="eraser"} eraserMode={eraserMode} onEraserMode={setEraserMode} anchor={drawingButtons.current[settingsTool]} highlighter={settingsTool==="highlighter"} colors={settingsTool==="highlighter"?highlightColors:colors} color={activeColor} size={settingsTool==="eraser"?eraserSize:activeSize} onChange={settingsTool==="eraser"?(_key,value)=>setEraserSize(value):editStyle} onClose={closeToolSettings}/>}
     <div className="board-surface">
     <header className="board-header">
@@ -942,7 +943,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       {!studentMode&&<button type="button" className="board-action board-grid-toggle" aria-pressed={grid} onClick={() => setGrid(!grid)}><BoardIcon name="grid"/><span>Клетка</span></button>}
     </div>
     <div className="board-mobile-view" role="group" aria-label="Масштаб листа">
-      <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}><BoardIcon name="minus"/></button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title="Вернуть масштаб 75%" onClick={()=>changeZoom(BOARD_DEFAULT_ZOOM)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}><BoardIcon name="plus"/></button></div>
+      <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}><BoardIcon name="minus"/></button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title={`Вернуть масштаб ${Math.round(defaultZoom*100)}%`} onClick={()=>changeZoom(defaultZoom)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}><BoardIcon name="plus"/></button></div>
       {!(studentMode&&tool==="select")&&!["pen","highlighter","eraser"].includes(tool)&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина <BoardIcon name={optionsOpen?"chevron-up":"chevron-down"}/></button>}
     </div>
     {!studentMode && tool === "select" && !groupItems.length && (selectedSolid || selectedItem?.type==="attachment") && selectedItem?.type!=="image" && (!pdfMode||selectedItem?.type==="attachment") && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
@@ -957,7 +958,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     {!studentMode&&tool==="select"&&groupItems.length>0&&<div className="board-selection-bar board-group-bar"><span>Выделено: {groupItems.length} · потяните внутри рамки</span><button type="button" className="board-action" onClick={()=>setSelectedIds([])}>Снять выделение</button></div>}
     <div className="board-actions">
       <div className="board-history" role="group" aria-label="История и листы"><button className="board-action" type="button" disabled={!past.length} aria-label="Отменить" title="Отменить" onClick={undo}><BoardIcon name="undo"/><span className="board-history-label"> Отменить</span></button><button className="board-action" type="button" disabled={!future.length} aria-label="Повторить" title="Повторить" onClick={redo}><BoardIcon name="redo"/><span className="board-history-label"> Повторить</span></button>{!studentMode&&<><button className="board-action" type="button" disabled={pageCount >= 100} onClick={addPage} aria-label="+ Добавить лист" title="Добавить лист"><BoardIcon name="plus"/><span>Добавить лист</span></button><button className="board-action" type="button" disabled={pageCount<=1} aria-label="Удалить лист" title="Удалить лист" onClick={()=>setDeletePage({mode:"single",from:String(pageCount),to:String(pageCount)})}><BoardIcon name="minus"/><span>Удалить лист</span></button></>}</div>
-      <div className="board-export"><button className="board-action board-pdf-button" type="button" aria-label="Скачать конспект PDF" title="Скачать конспект PDF" disabled={exporting} onClick={downloadPdf}><BoardIcon name="download"/>{exporting ? "Готовим…" : "Конспект"}</button></div>
+      <div className="board-export"><button className="board-action board-pdf-button" type="button" aria-label="Скачать конспект PDF" title="Скачать конспект PDF" disabled={exporting} onClick={downloadPdf}><BoardIcon name="download"/><span>{exporting ? "Готовим…" : "Конспект"}</span></button></div>
     </div>
     </div>
     <div className={`board-workspace${topicsPanel?" has-topics":""}`}>
