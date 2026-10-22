@@ -430,3 +430,14 @@
 .board-eraser-modes .board-action { flex:1; min-height:44px; padding:6px; font-size:12px; }
 .board-eraser-help { margin:8px 0 0; font-size:12px; line-height:1.5; color:#6f6f70; }
 .board-drawing-settings svg[aria-label="Область стирания"] { height:90px; }
+
+.board-topic-delete { display:flex; align-items:center; gap:7px; width:100%; margin-top:8px; min-height:40px; padding:8px 6px; color:#9a4436; font:inherit; font-size:12px; cursor:pointer; border-radius:6px; }
+.board-topic-delete:hover { background:#f3e8e2; }
+.board-topic-delete:disabled { opacity:.4; cursor:default; }
+.board-topic-delete-confirm { color:#9a4436; }
+
+.board-topic-row { display:grid; grid-template-columns:minmax(0,1fr) 32px; }
+.board-topic-row > .board-topic-delete { grid-column:1/-1; margin-top:0; }
+.board-topic-rename-hint { display:block; color:#647269; font-size:11px; margin:4px 0 8px; }
+
+.board-topic-local-backup { display:block; margin-top:14px; color:#647269; font-size:11px; line-height:1.5; text-decoration:underline; }

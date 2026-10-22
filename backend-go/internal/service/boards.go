@@ -116,6 +116,20 @@ func (s *Service) RenameTopic(ctx context.Context, p model.Principal, id, topic,
 	}
 	return s.Boards.RenameTopic(ctx, u.ID, topic, title)
 }
+func (s *Service) DeleteTopic(ctx context.Context, p model.Principal, id, topic string) error {
+	if err := Teacher(p); err != nil {
+		return err
+	}
+	owner, err := s.Owner(ctx, p, id)
+	if err != nil {
+		return err
+	}
+	if topic == "main" {
+		return model.Bad("Основная доска должна остаться.")
+	}
+	return s.Boards.DeleteTopic(ctx, owner.ID, topic)
+}
+
 func (s *Service) ReorderTopics(ctx context.Context, p model.Principal, id string, ids []string) error {
 	if err := Teacher(p); err != nil {
 		return err

@@ -138,6 +138,29 @@ func (s *Store) RenameTopic(ctx context.Context, student, id, title string) erro
 	}
 	return nil
 }
+func (s *Store) DeleteTopic(ctx context.Context, student, id string) error {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = lockOwner(ctx, tx, student); err != nil {
+		return err
+	}
+	result, err := builder.Delete("boards").Where(sq.Eq{"student_id": student, "id": id}).RunWith(tx).ExecContext(ctx)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return model.ErrNotFound
+	}
+	return tx.Commit()
+}
+
 func (s *Store) ReorderTopics(ctx context.Context, student string, ids []string) error {
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {

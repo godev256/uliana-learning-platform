@@ -196,6 +196,11 @@ func TestPostgresHTTPWorkflow(t *testing.T) {
 	topicID := decode[model.Topic](t, topic["topic"]).ID
 	student.call("POST", "/api/account?action=topics", map[string]any{"operation": "rename", "topicId": topicID, "title": "Denied"}, 403)
 	teacher.call("PATCH", "/api/v1/students/"+u.ID+"/boards/"+topicID, map[string]any{"title": "Геометрия"}, 200)
+	student.call("POST", "/api/account?action=topics", map[string]any{"operation": "delete", "topicId": topicID}, 403)
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "delete", "topicId": "main"}, 400)
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "delete", "topicId": topicID}, 200)
+	student.call("GET", "/api/account?action=board&topicId="+topicID, nil, 404)
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "delete", "topicId": topicID}, 404)
 	pdf := []byte("%PDF-1.7\noriginal lesson bytes")
 	asset := uuid.NewString()
 	body := map[string]any{"studentId": u.ID, "assetId": asset, "part": 0, "total": 1, "mime": "application/pdf", "data": base64.StdEncoding.EncodeToString(pdf)}

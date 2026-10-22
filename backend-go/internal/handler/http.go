@@ -354,6 +354,8 @@ func (h *Handler) account(w http.ResponseWriter, r *http.Request, action, operat
 			return
 		case "rename":
 			err = h.Service.RenameTopic(ctx, principal, id, topic, body.Title)
+		case "delete":
+			err = h.Service.DeleteTopic(ctx, principal, id, topic)
 		case "reorder":
 			err = h.Service.ReorderTopics(ctx, principal, id, body.IDs)
 		default:

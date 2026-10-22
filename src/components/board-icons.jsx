@@ -4,6 +4,7 @@ const paths={
  pen:'m4 20 1-5L16 4a2.1 2.1 0 0 1 3 3L8 18l-4 2Zm10-14 3 3M4 22h16',
  highlighter:'m8 14 8-11 5 4-8 11-5-4Zm0 0-4 5 5 2 4-3M3 23h12',
  eraser:'m4 13 8-9a2 2 0 0 1 3 0l6 6a2 2 0 0 1 0 3l-7 7H9l-5-4a2 2 0 0 1 0-3Zm4-5 9 9M14 20h7',
+ trash:'M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6m4-6v6',
  crop:'M6 3v13a2 2 0 0 0 2 2h13M3 6h13a2 2 0 0 1 2 2v13',
  line:'M5 19 19 5',
  upload:'M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5',

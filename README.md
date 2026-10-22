@@ -345,3 +345,19 @@ Vercel сохраняют прежнее поведение. Production Docker-�
 
 Настройка сервера, GHCR, GitHub Actions, SSL и резервного копирования описана
 в [deploy/README.md](deploy/README.md).
+
+## Account-based boards and topic management
+
+`/board` now always opens the signed-in user's server board. Go deployments
+persist accounts, notebooks, and attachments in PostgreSQL. Local Node-only
+development uses its server-side SQLite database. Legacy anonymous notebooks
+remain at `/board/local`; they are preserved and are not automatically migrated
+into an account. A link to existing legacy notes appears in the teacher board.
+To share data across devices, use the same published site and the correct account.
+
+Return/Enter submits topic/PDF renaming. Teachers can delete an extra board using
+the button below its active title and a confirmation dialog. Other boards remain.
+The required `main` board is protected. Go deletes board pages and PDF metadata
+in a transaction; shared attachment bytes are retained because other notebooks
+or lesson notes may reference them. Both APIs enforce teacher authorization.
+Verification: `npm run verify:topic-management`; Go: `cd backend-go && make test`.

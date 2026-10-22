@@ -67,7 +67,7 @@ export default async function accounts(req,res){
   }
   const studentId=session.role==='student'?session.id:(body.studentId||url.searchParams.get('studentId'));
   if(session.role==='student'&&(body.studentId&&body.studentId!==session.id||url.searchParams.get('studentId')&&url.searchParams.get('studentId')!==session.id))fail(403,'Этот кабинет вам недоступен.');
-  const student=(await query("SELECT id,login,role FROM account_users WHERE id=? AND role='student'",[studentId||'']))[0];if(!student)fail(404,'Кабинет не найден.');
+  const student=(await query("SELECT id,login,role FROM account_users WHERE id=?",[studentId||'']))[0];if(!student||(student.role!=='student'&&!(session.role==='teacher'&&student.id===session.id&&['topics','board','asset'].includes(action))))fail(404,'Кабинет не найден.');
   if(action==='password'&&req.method==='POST'){
    teacher();if(!validPassword(body.password))fail(400,'Пароль: от 10 до 128 символов.');await query('UPDATE account_users SET password_hash=? WHERE id=?',[await passwordHash(body.password),student.id]);await query('DELETE FROM account_sessions WHERE user_id=?',[student.id]);return reply(200,{ok:true});
   }
@@ -83,7 +83,12 @@ export default async function accounts(req,res){
     const topics=await query("SELECT t.id,t.title,t.sort_order,CASE WHEN d.topic_id IS NULL THEN 'board' ELSE 'pdf' END AS kind FROM account_board_topics t LEFT JOIN account_topic_documents d ON d.student_id=t.student_id AND d.topic_id=t.id WHERE t.student_id=? ORDER BY t.sort_order,t.id",[student.id]);
     if(req.method==='GET')return reply(200,{topics});
     teacher();
-    if(body.operation==='reorder'){
+    if(body.operation==='delete'){
+     if(body.topicId==='main')fail(400,'Основная доска должна остаться.');
+     if(!topics.some(topic=>topic.id===body.topicId))fail(404,'Доска не найдена.');
+     await query('DELETE FROM account_topic_documents WHERE student_id=? AND topic_id=?',[student.id,body.topicId]);
+     await query('DELETE FROM account_board_topics WHERE student_id=? AND id=?',[student.id,body.topicId]);
+    }else if(body.operation==='reorder'){
      if(!Array.isArray(body.ids)||body.ids.length!==topics.length||new Set(body.ids).size!==topics.length||body.ids.some(id=>!topics.some(topic=>topic.id===id)))fail(400,'Проверьте порядок досок.');
      for(let i=0;i<body.ids.length;i++)await query('UPDATE account_board_topics SET sort_order=? WHERE student_id=? AND id=?',[i,student.id,body.ids[i]]);
     }else{

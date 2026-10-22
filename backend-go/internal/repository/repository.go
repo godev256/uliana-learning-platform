@@ -27,6 +27,7 @@ type Boards interface {
 	Topics(context.Context, string) ([]model.Topic, error)
 	CreateTopic(context.Context, string, model.Topic, model.Notebook, *model.Document) error
 	RenameTopic(context.Context, string, string, string) error
+	DeleteTopic(context.Context, string, string) error
 	ReorderTopics(context.Context, string, []string) error
 	Board(context.Context, string, string) (model.Board, error)
 	SaveBoard(context.Context, string, string, model.Notebook, int64) (int64, error)
