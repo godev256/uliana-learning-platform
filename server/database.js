@@ -14,6 +14,11 @@ const schema=[
  `CREATE TABLE IF NOT EXISTS account_assets (student_id TEXT NOT NULL REFERENCES account_users(id), asset_id TEXT NOT NULL, part INTEGER NOT NULL, total INTEGER NOT NULL, mime TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY(student_id,asset_id,part))`,
  `CREATE TABLE IF NOT EXISTS account_attempts (attempt_key TEXT PRIMARY KEY, attempts INTEGER NOT NULL, reset_at BIGINT NOT NULL)`,
 ];
+export async function purgeTrash(query){
+ const cutoff=Date.now()-7*86400000;
+ await query("DELETE FROM account_topic_documents WHERE EXISTS(SELECT 1 FROM account_board_topics t WHERE t.student_id=account_topic_documents.student_id AND t.id=account_topic_documents.topic_id AND t.id<>'main' AND t.deleted_at<=?)",[cutoff]);
+ await query("DELETE FROM account_board_topics WHERE id<>'main' AND deleted_at<=?",[cutoff]);
+}
 export async function database(){
  if(!connection)connection=(async()=>{
   let query;
@@ -26,6 +31,10 @@ export async function database(){
    query=async(sql,args=[])=>sqlite.prepare(sql).all(...args);
   }
   for(const sql of schema)await query(sql);
+  const columns=process.env.DATABASE_URL?await query("SELECT column_name AS name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='account_board_topics'"):await query('PRAGMA table_info(account_board_topics)');
+  if(!columns.some(column=>column.name==='deleted_at'))await query('ALTER TABLE account_board_topics ADD COLUMN deleted_at BIGINT');
+  await purgeTrash(query);
+  const timer=setInterval(()=>purgeTrash(query).catch(()=>console.error('Board trash cleanup failed')),60000);timer.unref();
   return {query};
  })().catch(error=>{connection=null;throw error;});
  return connection;

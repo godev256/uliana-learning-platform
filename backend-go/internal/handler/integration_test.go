@@ -198,9 +198,75 @@ func TestPostgresHTTPWorkflow(t *testing.T) {
 	teacher.call("PATCH", "/api/v1/students/"+u.ID+"/boards/"+topicID, map[string]any{"title": "Геометрия"}, 200)
 	student.call("POST", "/api/account?action=topics", map[string]any{"operation": "delete", "topicId": topicID}, 403)
 	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "delete", "topicId": "main"}, 400)
+	topicPath := "/api/account?action=board&studentId=" + u.ID + "&topicId=" + topicID
+	teacher.call("POST", topicPath, map[string]any{"notebook": notebook, "revision": 0}, 200)
+	if _, err = store.DB.ExecContext(ctx, "INSERT INTO documents(student_id,board_id,asset_id,name,page_count) VALUES($1,$2,'test-pdf','Урок.pdf',3)", u.ID, topicID); err != nil {
+		t.Fatal(err)
+	}
 	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "delete", "topicId": topicID}, 200)
 	student.call("GET", "/api/account?action=board&topicId="+topicID, nil, 404)
 	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "delete", "topicId": topicID}, 404)
+
+	// Trash is private to teachers; stale pupil writes cannot modify a deleted board.
+	teacher.call("POST", topicPath, map[string]any{"notebook": notebook, "revision": 1}, 404)
+	studentTopics := student.call("GET", "/api/account?action=topics", nil, 200)
+	if _, ok := studentTopics["trash"]; ok {
+		t.Fatal("pupil can see trash")
+	}
+	listing := teacher.call("GET", "/api/account?action=topics&studentId="+u.ID, nil, 200)
+	trash := decode[[]model.DeletedTopic](t, listing["trash"])
+	if len(trash) != 1 || trash[0].ID != topicID || trash[0].ExpiresAt.Sub(trash[0].DeletedAt) != 7*24*time.Hour {
+		t.Fatal("trash or expiry incorrect")
+	}
+	student.call("POST", "/api/account?action=topics", map[string]any{"operation": "restore", "topicId": topicID}, 403)
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": otherID, "operation": "restore", "topicId": topicID}, 404)
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "restore", "topicId": topicID}, 200)
+	restored := student.call("GET", topicPath, nil, 200)
+	restoredBook := decode[model.Notebook](t, restored["notebook"])
+	if restoredBook.PageCount != notebook.PageCount || len(restoredBook.Items) != len(notebook.Items) {
+		t.Fatal("restoration lost notebook")
+	}
+	for i := range notebook.Items {
+		if !bytes.Equal(restoredBook.Items[i], notebook.Items[i]) {
+			a, _ := json.Marshal(decode[map[string]any](t, restoredBook.Items[i]))
+			b, _ := json.Marshal(decode[map[string]any](t, notebook.Items[i]))
+			if !bytes.Equal(a, b) {
+				t.Fatal("restoration changed items")
+			}
+		}
+	}
+	teacher.call("POST", topicPath, map[string]any{"notebook": notebook, "revision": 1}, 409)
+	var documents int
+	if err = store.DB.QueryRowContext(ctx, "SELECT count(*) FROM documents WHERE student_id=$1 AND board_id=$2", u.ID, topicID).Scan(&documents); err != nil || documents != 1 {
+		t.Fatal("lost PDF metadata on restore", err)
+	}
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "delete", "topicId": topicID}, 200)
+	if _, err = store.DB.ExecContext(ctx, "UPDATE boards SET deleted_at=CURRENT_TIMESTAMP-INTERVAL '7 days' WHERE student_id=$1 AND id=$2", u.ID, topicID); err != nil {
+		t.Fatal(err)
+	}
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "restore", "topicId": topicID}, 404)
+	listing = teacher.call("GET", "/api/account?action=topics&studentId="+u.ID, nil, 200)
+	if len(decode[[]model.DeletedTopic](t, listing["trash"])) != 0 {
+		t.Fatal("expired board still restorable")
+	}
+	fresh := teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "create", "title": "Fresh trash"}, 201)
+	freshID := decode[model.Topic](t, fresh["topic"]).ID
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "delete", "topicId": freshID}, 200)
+	if err = store.PurgeDeletedTopics(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range []string{"boards", "pages", "documents"} {
+		column := "board_id"
+		if table == "boards" {
+			column = "id"
+		}
+		var n int
+		if err = store.DB.QueryRowContext(ctx, "SELECT count(*) FROM "+table+" WHERE student_id=$1 AND "+column+"=$2", u.ID, topicID).Scan(&n); err != nil || n != 0 {
+			t.Fatal("expired board not purged", table, n, err)
+		}
+	}
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "restore", "topicId": freshID}, 200)
+	student.call("GET", path, nil, 200) // Cleanup preserves active boards.
 	pdf := []byte("%PDF-1.7\noriginal lesson bytes")
 	asset := uuid.NewString()
 	body := map[string]any{"studentId": u.ID, "assetId": asset, "part": 0, "total": 1, "mime": "application/pdf", "data": base64.StdEncoding.EncodeToString(pdf)}

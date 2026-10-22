@@ -80,14 +80,19 @@ export default async function accounts(req,res){
    await query("INSERT INTO account_board_topics(student_id,id,title,sort_order,notebook,revision) SELECT ?,'main','Текущий урок',0,notebook,revision FROM account_boards WHERE student_id=? ON CONFLICT(student_id,id) DO NOTHING",[student.id,student.id]);
    await query("INSERT INTO account_board_topics(student_id,id,title,sort_order,notebook,revision) VALUES(?,'main','Текущий урок',0,?,0) ON CONFLICT(student_id,id) DO NOTHING",[student.id,JSON.stringify({items:[],pageCount:3})]);
    if(action==='topics'){
-    const topics=await query("SELECT t.id,t.title,t.sort_order,CASE WHEN d.topic_id IS NULL THEN 'board' ELSE 'pdf' END AS kind FROM account_board_topics t LEFT JOIN account_topic_documents d ON d.student_id=t.student_id AND d.topic_id=t.id WHERE t.student_id=? ORDER BY t.sort_order,t.id",[student.id]);
-    if(req.method==='GET')return reply(200,{topics});
+    const topics=await query("SELECT t.id,t.title,t.sort_order,CASE WHEN d.topic_id IS NULL THEN 'board' ELSE 'pdf' END AS kind FROM account_board_topics t LEFT JOIN account_topic_documents d ON d.student_id=t.student_id AND d.topic_id=t.id WHERE t.student_id=? AND t.deleted_at IS NULL ORDER BY t.sort_order,t.id",[student.id]);
+    if(req.method==='GET'){
+     const trash=session.role==='teacher'?await query("SELECT t.id,t.title,t.sort_order,t.deleted_at,CASE WHEN d.topic_id IS NULL THEN 'board' ELSE 'pdf' END AS kind FROM account_board_topics t LEFT JOIN account_topic_documents d ON d.student_id=t.student_id AND d.topic_id=t.id WHERE t.student_id=? AND t.deleted_at>? ORDER BY t.deleted_at DESC,t.id",[student.id,Date.now()-7*86400000]):undefined;
+     return reply(200,{topics,...(trash?{trash:trash.map(row=>({...row,deletedAt:new Date(Number(row.deleted_at)).toISOString(),expiresAt:new Date(Number(row.deleted_at)+7*86400000).toISOString()}))}:{})});
+    }
     teacher();
     if(body.operation==='delete'){
      if(body.topicId==='main')fail(400,'Основная доска должна остаться.');
      if(!topics.some(topic=>topic.id===body.topicId))fail(404,'Доска не найдена.');
-     await query('DELETE FROM account_topic_documents WHERE student_id=? AND topic_id=?',[student.id,body.topicId]);
-     await query('DELETE FROM account_board_topics WHERE student_id=? AND id=?',[student.id,body.topicId]);
+     const removed=await query('UPDATE account_board_topics SET deleted_at=?,revision=revision+1 WHERE student_id=? AND id=? AND deleted_at IS NULL RETURNING id',[Date.now(),student.id,body.topicId]);if(!removed.length)fail(404,'Доска не найдена.');
+    }else if(body.operation==='restore'){
+     if(topics.length>=100)fail(400,'Сначала освободите место: можно хранить до 100 активных досок.');
+     const restored=await query("UPDATE account_board_topics SET deleted_at=NULL,revision=revision+1 WHERE student_id=? AND id=? AND id<>'main' AND deleted_at>? RETURNING id",[student.id,body.topicId,Date.now()-7*86400000]);if(!restored.length)fail(404,'Доска не найдена в корзине.');
     }else if(body.operation==='reorder'){
      if(!Array.isArray(body.ids)||body.ids.length!==topics.length||new Set(body.ids).size!==topics.length||body.ids.some(id=>!topics.some(topic=>topic.id===id)))fail(400,'Проверьте порядок досок.');
      for(let i=0;i<body.ids.length;i++)await query('UPDATE account_board_topics SET sort_order=? WHERE student_id=? AND id=?',[i,student.id,body.ids[i]]);
@@ -113,10 +118,10 @@ export default async function accounts(req,res){
     return reply(200,{ok:true});
    }
    const topicId=body.topicId||url.searchParams.get('topicId')||'main';if(typeof topicId!=='string'||topicId.length>80)fail(400,'Некорректная доска.');
-   const board=(await query('SELECT id,title,notebook,revision FROM account_board_topics WHERE student_id=? AND id=?',[student.id,topicId]))[0];if(!board)fail(404,'Доска не найдена.');
+   const board=(await query('SELECT id,title,notebook,revision FROM account_board_topics WHERE student_id=? AND id=? AND deleted_at IS NULL',[student.id,topicId]))[0];if(!board)fail(404,'Доска не найдена.');
    if(req.method==='POST'){
     const book=body.notebook;if(!book||!Array.isArray(book.items)||book.items.length>10000||!Number.isInteger(book.pageCount)||book.pageCount<1||book.pageCount>100||!Number.isInteger(body.revision)||book.items.some(item=>!item||typeof item.id!=='string'||typeof item.type!=='string'||!Number.isInteger(item.page)||item.page<0||item.page>=book.pageCount))fail(400,'Не удалось сохранить доску: проверьте данные.');
-    const updated=await query('UPDATE account_board_topics SET notebook=?,revision=revision+1 WHERE student_id=? AND id=? AND revision=? RETURNING revision',[JSON.stringify(book),student.id,topicId,body.revision]);if(!updated.length)fail(409,'Доска изменена в другом окне. Обновите её перед продолжением.');return reply(200,{revision:updated[0].revision});
+    const updated=await query('UPDATE account_board_topics SET notebook=?,revision=revision+1 WHERE student_id=? AND id=? AND revision=? AND deleted_at IS NULL RETURNING revision',[JSON.stringify(book),student.id,topicId,body.revision]);if(!updated.length)fail(409,'Доска изменена в другом окне. Обновите её перед продолжением.');return reply(200,{revision:updated[0].revision});
    }
    const document=(await query('SELECT asset_id,name,page_count FROM account_topic_documents WHERE student_id=? AND topic_id=?',[student.id,topicId]))[0];return reply(200,{student,topic:{id:board.id,title:board.title,kind:document?'pdf':'board'},notebook:JSON.parse(board.notebook),revision:board.revision});
   }

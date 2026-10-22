@@ -64,6 +64,11 @@ type Topic struct {
 	Kind      string `json:"kind"`
 	SortOrder int    `json:"sort_order"`
 }
+type DeletedTopic struct {
+	Topic
+	DeletedAt time.Time `json:"deletedAt"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
 type Board struct {
 	Student  User     `json:"student"`
 	Topic    Topic    `json:"topic"`

@@ -39,6 +39,29 @@ func run(log *slog.Logger) error {
 	if err = migrations.Apply(ctx, store.DB); err != nil {
 		return err
 	}
+	// Clean up on startup and every minute, even when no one opens the cabinet.
+	cleanupCtx, stopCleanup := context.WithCancel(context.Background())
+	defer stopCleanup()
+	go func() {
+		purge := func() {
+			ctx, cancel := context.WithTimeout(cleanupCtx, 30*time.Second)
+			defer cancel()
+			if err := store.PurgeDeletedTopics(ctx); err != nil && cleanupCtx.Err() == nil {
+				log.Error("board trash cleanup failed", "error", err)
+			}
+		}
+		purge()
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-cleanupCtx.Done():
+				return
+			case <-ticker.C:
+				purge()
+			}
+		}
+	}()
 	svc := &service.Service{Users: store, Sessions: store, Boards: store, Assets: store, Profiles: store, Tokens: auth.Tokens{Key: []byte(cfg.Secret), Issuer: cfg.Issuer, Audience: cfg.Audience, TTL: cfg.TTL}}
 	handlers := &handler.Handler{Service: svc, Config: cfg, Ping: store.DB.PingContext, Log: log}
 	server := &http.Server{Addr: cfg.Address, Handler: handlers.Routes(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 20 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20}

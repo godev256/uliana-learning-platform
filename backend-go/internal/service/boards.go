@@ -183,3 +183,27 @@ func (s *Service) CompletePDF(ctx context.Context, student, asset string, expect
 	}
 	return nil
 }
+
+func (s *Service) TrashTopics(ctx context.Context, p model.Principal, id string) ([]model.DeletedTopic, error) {
+	if err := Teacher(p); err != nil {
+		return nil, err
+	}
+	owner, err := s.Owner(ctx, p, id)
+	if err != nil {
+		return nil, err
+	}
+	return s.Boards.TrashTopics(ctx, owner.ID)
+}
+func (s *Service) RestoreTopic(ctx context.Context, p model.Principal, id, topic string) error {
+	if err := Teacher(p); err != nil {
+		return err
+	}
+	owner, err := s.Owner(ctx, p, id)
+	if err != nil {
+		return err
+	}
+	if topic == "main" {
+		return model.Bad("Основная доска уже доступна.")
+	}
+	return s.Boards.RestoreTopic(ctx, owner.ID, topic)
+}

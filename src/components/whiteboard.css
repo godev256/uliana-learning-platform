@@ -501,3 +501,13 @@
 @media(max-height:500px) and (max-width:1024px){
  .whiteboard.is-student .board-tools { gap:2px; }
 }
+
+.board-trash { margin-top:16px; border-top:1px solid #d0dbce; }
+.board-trash > summary { min-height:44px; gap:7px; }
+.board-trash > summary > span { margin-left:auto; font-size:12px; color:#647269; }
+.board-trash p { margin:4px 0 12px; color:#647269; font-size:12px; line-height:1.5; }
+.board-trash ul { list-style:none; padding:0; margin:0; display:grid; gap:8px; }
+.board-trash li { padding:10px; background:#fbfaf6; border:1px solid #d0dbce; border-radius:8px; overflow-wrap:anywhere; }
+.board-trash strong { display:block; font-size:13px; font-weight:500; }
+.board-trash small { display:block; margin-top:5px; color:#647269; font-size:11px; line-height:1.5; }
+.board-trash li .board-action { margin-top:6px; padding:6px 8px; min-height:44px; border-color:#bdcec4; }

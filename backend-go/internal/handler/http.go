@@ -334,7 +334,16 @@ func (h *Handler) account(w http.ResponseWriter, r *http.Request, action, operat
 				h.fail(w, e)
 				return
 			}
-			reply(w, 200, map[string]any{"topics": topics})
+			response := map[string]any{"topics": topics}
+			if principal.User.Role == "teacher" {
+				trash, e := h.Service.TrashTopics(ctx, principal, id)
+				if e != nil {
+					h.fail(w, e)
+					return
+				}
+				response["trash"] = trash
+			}
+			reply(w, 200, response)
 			return
 		}
 		if operation == "" {
@@ -356,6 +365,8 @@ func (h *Handler) account(w http.ResponseWriter, r *http.Request, action, operat
 			err = h.Service.RenameTopic(ctx, principal, id, topic, body.Title)
 		case "delete":
 			err = h.Service.DeleteTopic(ctx, principal, id, topic)
+		case "restore":
+			err = h.Service.RestoreTopic(ctx, principal, id, topic)
 		case "reorder":
 			err = h.Service.ReorderTopics(ctx, principal, id, body.IDs)
 		default:

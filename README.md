@@ -355,9 +355,18 @@ remain at `/board/local`; they are preserved and are not automatically migrated
 into an account. A link to existing legacy notes appears in the teacher board.
 To share data across devices, use the same published site and the correct account.
 
-Return/Enter submits topic/PDF renaming. Teachers can delete an extra board using
-the button below its active title and a confirmation dialog. Other boards remain.
-The required `main` board is protected. Go deletes board pages and PDF metadata
-in a transaction; shared attachment bytes are retained because other notebooks
-or lesson notes may reference them. Both APIs enforce teacher authorization.
-Verification: `npm run verify:topic-management`; Go: `cd backend-go && make test`.
+Return/Enter submits topic/PDF renaming. Teachers can move an extra board into
+the workspace's Trash using the button below its active title and a confirmation
+dialog. Trash preserves all pages, PDF metadata, annotations and the board ID for
+seven days. Restore returns the board to the active list and opens it. The required
+`main` board is protected. Students cannot see trash, restore boards, or read/write
+trashed boards. Revisions advance on deletion and restoration to reject stale writes.
+
+Migration `002_board_trash.sql` adds nullable `deleted_at`; existing boards stay
+active. The Go API purges expired boards (including their pages and PDF metadata
+via cascading foreign keys) on startup and every minute, independently of requests.
+Expired entries are immediately excluded from trash and restoration. Node local
+development uses the same retention and cleanup interval with SQLite. Shared asset
+bytes remain because other notebooks or lesson notes may reference them. Legacy
+anonymous `/board/local` retains its original local-only deletion behavior.
+Verification: `npm run verify:topic-management`; Go: `cd backend-go && ./scripts/dev.sh test`.

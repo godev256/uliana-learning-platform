@@ -84,7 +84,7 @@ func (s *Store) EnsureMain(ctx context.Context, student string) error {
 	return tx.Commit()
 }
 func (s *Store) Topics(ctx context.Context, student string) ([]model.Topic, error) {
-	rows, err := builder.Select("id", "title", "kind", "sort_order").From("boards").Where(sq.Eq{"student_id": student}).OrderBy("sort_order", "id").RunWith(s.DB).QueryContext(ctx)
+	rows, err := builder.Select("id", "title", "kind", "sort_order").From("boards").Where(sq.Eq{"student_id": student, "deleted_at": nil}).OrderBy("sort_order", "id").RunWith(s.DB).QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (s *Store) CreateTopic(ctx context.Context, student string, t model.Topic, 
 		return err
 	}
 	var count, max int
-	if err = builder.Select("count(*)", "COALESCE(max(sort_order),-1)").From("boards").Where(sq.Eq{"student_id": student}).RunWith(tx).QueryRowContext(ctx).Scan(&count, &max); err != nil {
+	if err = builder.Select("count(*)", "COALESCE(max(sort_order),-1)").From("boards").Where(sq.Eq{"student_id": student, "deleted_at": nil}).RunWith(tx).QueryRowContext(ctx).Scan(&count, &max); err != nil {
 		return err
 	}
 	if count >= 100 {
@@ -128,7 +128,7 @@ func (s *Store) CreateTopic(ctx context.Context, student string, t model.Topic, 
 	return tx.Commit()
 }
 func (s *Store) RenameTopic(ctx context.Context, student, id, title string) error {
-	r, err := builder.Update("boards").Set("title", title).Where(sq.Eq{"student_id": student, "id": id}).RunWith(s.DB).ExecContext(ctx)
+	r, err := builder.Update("boards").Set("title", title).Where(sq.Eq{"student_id": student, "id": id, "deleted_at": nil}).RunWith(s.DB).ExecContext(ctx)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (s *Store) DeleteTopic(ctx context.Context, student, id string) error {
 	if err = lockOwner(ctx, tx, student); err != nil {
 		return err
 	}
-	result, err := builder.Delete("boards").Where(sq.Eq{"student_id": student, "id": id}).RunWith(tx).ExecContext(ctx)
+	result, err := builder.Update("boards").Set("deleted_at", sq.Expr("CURRENT_TIMESTAMP")).Set("revision", sq.Expr("revision+1")).Where(sq.Eq{"student_id": student, "id": id, "deleted_at": nil}).Where(sq.NotEq{"id": "main"}).RunWith(tx).ExecContext(ctx)
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (s *Store) ReorderTopics(ctx context.Context, student string, ids []string)
 	if err = lockOwner(ctx, tx, student); err != nil {
 		return err
 	}
-	rows, err := builder.Select("id").From("boards").Where(sq.Eq{"student_id": student}).RunWith(tx).QueryContext(ctx)
+	rows, err := builder.Select("id").From("boards").Where(sq.Eq{"student_id": student, "deleted_at": nil}).RunWith(tx).QueryContext(ctx)
 	if err != nil {
 		return err
 	}
@@ -210,7 +210,7 @@ func (s *Store) Board(ctx context.Context, student, id string) (model.Board, err
 	}
 	defer tx.Rollback()
 	var orderJSON []byte
-	err = builder.Select("id", "title", "kind", "sort_order", "page_count", "revision", "item_order").From("boards").Where(sq.Eq{"student_id": student, "id": id}).RunWith(tx).QueryRowContext(ctx).Scan(&out.Topic.ID, &out.Topic.Title, &out.Topic.Kind, &out.Topic.SortOrder, &out.Notebook.PageCount, &out.Revision, &orderJSON)
+	err = builder.Select("id", "title", "kind", "sort_order", "page_count", "revision", "item_order").From("boards").Where(sq.Eq{"student_id": student, "id": id, "deleted_at": nil}).RunWith(tx).QueryRowContext(ctx).Scan(&out.Topic.ID, &out.Topic.Title, &out.Topic.Kind, &out.Topic.SortOrder, &out.Notebook.PageCount, &out.Revision, &orderJSON)
 	if err != nil {
 		return out, translate(err)
 	}
@@ -274,7 +274,7 @@ func (s *Store) SaveBoard(ctx context.Context, student, id string, book model.No
 	}
 	defer tx.Rollback()
 	var current int64
-	err = builder.Select("revision").From("boards").Where(sq.Eq{"student_id": student, "id": id}).Suffix("FOR UPDATE").RunWith(tx).QueryRowContext(ctx).Scan(&current)
+	err = builder.Select("revision").From("boards").Where(sq.Eq{"student_id": student, "id": id, "deleted_at": nil}).Suffix("FOR UPDATE").RunWith(tx).QueryRowContext(ctx).Scan(&current)
 	if err != nil {
 		return 0, translate(err)
 	}
@@ -293,4 +293,55 @@ func (s *Store) SaveBoard(ctx context.Context, student, id string, book model.No
 		return 0, err
 	}
 	return current + 1, tx.Commit()
+}
+
+// Deleted boards remain intact for seven days, but are never writable or visible to pupils.
+func (s *Store) TrashTopics(ctx context.Context, student string) ([]model.DeletedTopic, error) {
+	rows, err := s.DB.QueryContext(ctx, `SELECT id,title,kind,sort_order,deleted_at,deleted_at+INTERVAL '7 days' FROM boards WHERE student_id=$1 AND deleted_at>CURRENT_TIMESTAMP-INTERVAL '7 days' ORDER BY deleted_at DESC,id`, student)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []model.DeletedTopic{}
+	for rows.Next() {
+		var t model.DeletedTopic
+		if err = rows.Scan(&t.ID, &t.Title, &t.Kind, &t.SortOrder, &t.DeletedAt, &t.ExpiresAt); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+func (s *Store) RestoreTopic(ctx context.Context, student, id string) error {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = lockOwner(ctx, tx, student); err != nil {
+		return err
+	}
+	var count int
+	if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM boards WHERE student_id=$1 AND deleted_at IS NULL", student).Scan(&count); err != nil {
+		return err
+	}
+	if count >= 100 {
+		return model.Bad("Сначала освободите место: можно хранить до 100 активных досок.")
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE boards SET deleted_at=NULL,revision=revision+1 WHERE student_id=$1 AND id=$2 AND deleted_at>CURRENT_TIMESTAMP-INTERVAL '7 days'`, student, id)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return model.ErrNotFound
+	}
+	return tx.Commit()
+}
+func (s *Store) PurgeDeletedTopics(ctx context.Context) error {
+	_, err := s.DB.ExecContext(ctx, `DELETE FROM boards WHERE id<>'main' AND deleted_at<=CURRENT_TIMESTAMP-INTERVAL '7 days'`)
+	return err
 }
