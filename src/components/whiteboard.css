@@ -511,3 +511,44 @@
 .board-trash strong { display:block; font-size:13px; font-weight:500; }
 .board-trash small { display:block; margin-top:5px; color:#647269; font-size:11px; line-height:1.5; }
 .board-trash li .board-action { margin-top:6px; padding:6px 8px; min-height:44px; border-color:#bdcec4; }
+
+/* Folder-like groups organize a teaching workspace without crowding the paper. */
+.board-group-create { width:100%; justify-content:flex-start; gap:7px; margin:0 0 10px; border:1px dashed #bdcec4; min-height:44px; font-size:12px; }
+.board-group-create > .board-icon:last-child { margin-left:auto; width:15px; height:15px; flex-basis:15px; }
+.board-topic-groups { display:grid; gap:10px; width:100%; min-width:0; }
+.board-topic-group { min-width:0; border:1px solid #d0dbce; border-radius:10px; background:#f7f9f3; overflow:hidden; }
+.board-group-heading { display:flex; align-items:center; min-width:0; }
+.board-group-toggle { display:grid; grid-template-columns:12px 17px minmax(0,1fr) auto; align-items:center; gap:5px; width:100%; min-width:0; min-height:48px; padding:9px 8px; border:0; background:transparent; color:#2f493f; text-align:left; font:inherit; font-size:12px; cursor:pointer; }
+.board-group-toggle > .board-icon { width:16px; height:16px; flex-basis:16px; }
+.board-group-toggle > .board-icon:first-child { width:12px; }
+.board-group-toggle > span { overflow-wrap:anywhere; line-height:1.5; }
+.board-group-toggle > small { color:#647269; font-size:11px; }
+.board-group-heading > .board-topic-rename { flex:0 0 30px; width:30px; }
+.board-topic-group.has-active-board > .board-group-heading { background:#e6eee2; }
+.board-group-toggle:hover { background:#eaf0e5; }
+.board-group-toggle:focus-visible { outline:2px solid #667f70; outline-offset:-3px; border-radius:8px; }
+.board-group-contents { display:grid; gap:6px; margin:0 7px 8px 12px; padding-left:8px; border-left:1px solid #c6d6c6; }
+.board-group-contents .board-topic-card { min-height:44px; padding:8px; gap:6px; font-size:12px; background:#fbfaf6; }
+.board-group-contents .board-topic-card.is-active { background:#e5efdf; }
+.board-group-contents .board-topic-rename { width:28px; }
+.board-group-contents .board-topic-row { grid-template-columns:minmax(0,1fr) 28px; }
+.board-group-add { justify-content:flex-start; min-height:44px; padding:6px; font-size:11px; }
+.board-group-empty { margin:6px 0; font-size:12px; color:#647269; }
+.board-ungrouped { display:grid; gap:6px; }
+.board-ungrouped h3 { display:flex; justify-content:space-between; margin:4px 2px; font-size:11px; font-weight:400; color:#647269; }
+.board-group-form { padding:10px 8px; margin-bottom:8px; background:#f4f7ef; border:1px solid #d0dbce; border-radius:8px; }
+.board-group-form label,.board-group-field { display:block; color:#537361; font-size:12px; line-height:1.5; }
+.board-group-form input,.board-group-field select { display:block; width:100%; min-width:0; min-height:40px; margin:6px 0 9px; padding:7px; border:1px solid #bdcec4; border-radius:6px; background:#fbfaf6; color:#2f493f; font:inherit; font-size:13px; }
+.board-group-form > div { display:flex; flex-wrap:wrap; gap:4px; }
+.board-group-form .board-action { min-height:40px; padding:5px 7px; font-size:12px; }
+.board-group-remove { color:#9a4436; }
+.board-topic-move { margin-top:10px; }
+@media(min-width:1025px) and (not (any-pointer:coarse)){
+ .board-workspace.has-topics:has(.board-topic-groups) { grid-template-columns:200px minmax(0,1fr); gap:24px; }
+}
+@media(max-width:1024px),(any-pointer:coarse){
+ .board-group-form input,.board-group-field select { font-size:16px; min-height:44px; }
+ .board-group-form .board-action { min-height:44px; }
+ .whiteboard.is-student .board-group-contents .board-topic-row { grid-template-columns:minmax(0,1fr); }
+ .whiteboard.is-student .board-group-contents { margin-left:8px; }
+}

@@ -56,7 +56,7 @@ func insertTopic(ctx context.Context, tx *sql.Tx, student string, t model.Topic,
 		return err
 	}
 	data, _ := json.Marshal(order)
-	_, err = builder.Insert("boards").Columns("student_id", "id", "title", "kind", "sort_order", "page_count", "revision", "item_order").Values(student, t.ID, t.Title, t.Kind, t.SortOrder, book.PageCount, 0, string(data)).RunWith(tx).ExecContext(ctx)
+	_, err = builder.Insert("boards").Columns("student_id", "id", "title", "kind", "sort_order", "page_count", "revision", "item_order", "group_id").Values(student, t.ID, t.Title, t.Kind, t.SortOrder, book.PageCount, 0, string(data), nullableGroup(t.GroupID)).RunWith(tx).ExecContext(ctx)
 	if err != nil {
 		return translate(err)
 	}
@@ -84,7 +84,7 @@ func (s *Store) EnsureMain(ctx context.Context, student string) error {
 	return tx.Commit()
 }
 func (s *Store) Topics(ctx context.Context, student string) ([]model.Topic, error) {
-	rows, err := builder.Select("id", "title", "kind", "sort_order").From("boards").Where(sq.Eq{"student_id": student, "deleted_at": nil}).OrderBy("sort_order", "id").RunWith(s.DB).QueryContext(ctx)
+	rows, err := builder.Select("id", "title", "kind", "sort_order", "COALESCE(group_id,'')").From("boards").Where(sq.Eq{"student_id": student, "deleted_at": nil}).OrderBy("sort_order", "id").RunWith(s.DB).QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (s *Store) Topics(ctx context.Context, student string) ([]model.Topic, erro
 	out := []model.Topic{}
 	for rows.Next() {
 		var t model.Topic
-		if err = rows.Scan(&t.ID, &t.Title, &t.Kind, &t.SortOrder); err != nil {
+		if err = rows.Scan(&t.ID, &t.Title, &t.Kind, &t.SortOrder, &t.GroupID); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
@@ -106,6 +106,9 @@ func (s *Store) CreateTopic(ctx context.Context, student string, t model.Topic, 
 	}
 	defer tx.Rollback()
 	if err = lockOwner(ctx, tx, student); err != nil {
+		return err
+	}
+	if err = validGroup(ctx, tx, student, t.GroupID); err != nil {
 		return err
 	}
 	var count, max int
@@ -210,7 +213,7 @@ func (s *Store) Board(ctx context.Context, student, id string) (model.Board, err
 	}
 	defer tx.Rollback()
 	var orderJSON []byte
-	err = builder.Select("id", "title", "kind", "sort_order", "page_count", "revision", "item_order").From("boards").Where(sq.Eq{"student_id": student, "id": id, "deleted_at": nil}).RunWith(tx).QueryRowContext(ctx).Scan(&out.Topic.ID, &out.Topic.Title, &out.Topic.Kind, &out.Topic.SortOrder, &out.Notebook.PageCount, &out.Revision, &orderJSON)
+	err = builder.Select("id", "title", "kind", "sort_order", "page_count", "revision", "item_order", "COALESCE(group_id,'')").From("boards").Where(sq.Eq{"student_id": student, "id": id, "deleted_at": nil}).RunWith(tx).QueryRowContext(ctx).Scan(&out.Topic.ID, &out.Topic.Title, &out.Topic.Kind, &out.Topic.SortOrder, &out.Notebook.PageCount, &out.Revision, &orderJSON, &out.Topic.GroupID)
 	if err != nil {
 		return out, translate(err)
 	}
@@ -297,7 +300,7 @@ func (s *Store) SaveBoard(ctx context.Context, student, id string, book model.No
 
 // Deleted boards remain intact for seven days, but are never writable or visible to pupils.
 func (s *Store) TrashTopics(ctx context.Context, student string) ([]model.DeletedTopic, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT id,title,kind,sort_order,deleted_at,deleted_at+INTERVAL '7 days' FROM boards WHERE student_id=$1 AND deleted_at>CURRENT_TIMESTAMP-INTERVAL '7 days' ORDER BY deleted_at DESC,id`, student)
+	rows, err := s.DB.QueryContext(ctx, `SELECT id,title,kind,sort_order,deleted_at,deleted_at+INTERVAL '7 days',COALESCE(group_id,'') FROM boards WHERE student_id=$1 AND deleted_at>CURRENT_TIMESTAMP-INTERVAL '7 days' ORDER BY deleted_at DESC,id`, student)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +308,7 @@ func (s *Store) TrashTopics(ctx context.Context, student string) ([]model.Delete
 	out := []model.DeletedTopic{}
 	for rows.Next() {
 		var t model.DeletedTopic
-		if err = rows.Scan(&t.ID, &t.Title, &t.Kind, &t.SortOrder, &t.DeletedAt, &t.ExpiresAt); err != nil {
+		if err = rows.Scan(&t.ID, &t.Title, &t.Kind, &t.SortOrder, &t.DeletedAt, &t.ExpiresAt, &t.GroupID); err != nil {
 			return nil, err
 		}
 		out = append(out, t)

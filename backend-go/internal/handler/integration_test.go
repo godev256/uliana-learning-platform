@@ -267,6 +267,49 @@ func TestPostgresHTTPWorkflow(t *testing.T) {
 	}
 	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "restore", "topicId": freshID}, 200)
 	student.call("GET", path, nil, 200) // Cleanup preserves active boards.
+
+	// Groups are owner-scoped metadata; grouping never rewrites a notebook.
+	groupResult := teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "group-create", "title": "Первая часть ОГЭ"}, 201)
+	groupID := decode[model.BoardGroup](t, groupResult["group"]).ID
+	for _, op := range []string{"group-create", "group-rename", "group-delete", "move"} {
+		student.call("POST", "/api/account?action=topics", map[string]any{"operation": op, "groupId": groupID, "topicId": freshID, "title": "Denied"}, 403)
+	}
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "move", "groupId": groupID, "topicId": "main"}, 400)
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": otherID, "operation": "create", "title": "Foreign group", "groupId": groupID}, 404)
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": otherID, "operation": "group-delete", "groupId": groupID}, 404)
+	grouped := teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "create", "title": "Задание 1", "groupId": groupID}, 201)
+	groupedID := decode[model.Topic](t, grouped["topic"]).ID
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "move", "groupId": groupID, "topicId": freshID}, 200)
+	groupedPath := "/api/account?action=board&studentId=" + u.ID + "&topicId=" + groupedID
+	teacher.call("POST", groupedPath, map[string]any{"notebook": notebook, "revision": 0}, 200)
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "group-rename", "groupId": groupID, "title": "Первая часть"}, 200)
+	groupListing := student.call("GET", "/api/account?action=topics", nil, 200)
+	listedGroups := decode[[]model.BoardGroup](t, groupListing["groups"])
+	if len(listedGroups) != 1 || listedGroups[0].Title != "Первая часть" {
+		t.Fatal("group listing lost")
+	}
+	groupedBoard := student.call("GET", groupedPath, nil, 200)
+	if decode[model.Topic](t, groupedBoard["topic"]).GroupID != groupID {
+		t.Fatal("group not persisted")
+	}
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "delete", "topicId": groupedID}, 200)
+	trashListing := teacher.call("GET", "/api/account?action=topics&studentId="+u.ID, nil, 200)
+	if decode[[]model.DeletedTopic](t, trashListing["trash"])[0].GroupID != groupID {
+		t.Fatal("trash lost group")
+	}
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "restore", "topicId": groupedID}, 200)
+	groupedBoard = student.call("GET", groupedPath, nil, 200)
+	if decode[model.Topic](t, groupedBoard["topic"]).GroupID != groupID {
+		t.Fatal("restore lost group")
+	}
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "delete", "topicId": groupedID}, 200)
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "group-delete", "groupId": groupID}, 200)
+	teacher.call("POST", "/api/account?action=topics", map[string]any{"studentId": u.ID, "operation": "restore", "topicId": groupedID}, 200)
+	groupedBoard = student.call("GET", groupedPath, nil, 200)
+	if decode[model.Topic](t, groupedBoard["topic"]).GroupID != "" || len(decode[model.Notebook](t, groupedBoard["notebook"]).Items) != len(notebook.Items) {
+		t.Fatal("group removal lost board or ink")
+	}
+	teacher.call("GET", "/api/account?action=board&studentId="+u.ID+"&topicId="+freshID, nil, 200)
 	pdf := []byte("%PDF-1.7\noriginal lesson bytes")
 	asset := uuid.NewString()
 	body := map[string]any{"studentId": u.ID, "assetId": asset, "part": 0, "total": 1, "mime": "application/pdf", "data": base64.StdEncoding.EncodeToString(pdf)}

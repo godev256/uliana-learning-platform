@@ -80,12 +80,28 @@ export default async function accounts(req,res){
    await query("INSERT INTO account_board_topics(student_id,id,title,sort_order,notebook,revision) SELECT ?,'main','Текущий урок',0,notebook,revision FROM account_boards WHERE student_id=? ON CONFLICT(student_id,id) DO NOTHING",[student.id,student.id]);
    await query("INSERT INTO account_board_topics(student_id,id,title,sort_order,notebook,revision) VALUES(?,'main','Текущий урок',0,?,0) ON CONFLICT(student_id,id) DO NOTHING",[student.id,JSON.stringify({items:[],pageCount:3})]);
    if(action==='topics'){
-    const topics=await query("SELECT t.id,t.title,t.sort_order,CASE WHEN d.topic_id IS NULL THEN 'board' ELSE 'pdf' END AS kind FROM account_board_topics t LEFT JOIN account_topic_documents d ON d.student_id=t.student_id AND d.topic_id=t.id WHERE t.student_id=? AND t.deleted_at IS NULL ORDER BY t.sort_order,t.id",[student.id]);
+    const groups=await query('SELECT id,title,sort_order FROM account_board_groups WHERE student_id=? ORDER BY sort_order,id',[student.id]);
+    const topics=await query("SELECT t.id,t.title,t.group_id AS \"groupId\",t.sort_order,CASE WHEN d.topic_id IS NULL THEN 'board' ELSE 'pdf' END AS kind FROM account_board_topics t LEFT JOIN account_topic_documents d ON d.student_id=t.student_id AND d.topic_id=t.id WHERE t.student_id=? AND t.deleted_at IS NULL ORDER BY t.sort_order,t.id",[student.id]);
     if(req.method==='GET'){
-     const trash=session.role==='teacher'?await query("SELECT t.id,t.title,t.sort_order,t.deleted_at,CASE WHEN d.topic_id IS NULL THEN 'board' ELSE 'pdf' END AS kind FROM account_board_topics t LEFT JOIN account_topic_documents d ON d.student_id=t.student_id AND d.topic_id=t.id WHERE t.student_id=? AND t.deleted_at>? ORDER BY t.deleted_at DESC,t.id",[student.id,Date.now()-7*86400000]):undefined;
-     return reply(200,{topics,...(trash?{trash:trash.map(row=>({...row,deletedAt:new Date(Number(row.deleted_at)).toISOString(),expiresAt:new Date(Number(row.deleted_at)+7*86400000).toISOString()}))}:{})});
+     const trash=session.role==='teacher'?await query("SELECT t.id,t.title,t.group_id AS \"groupId\",t.sort_order,t.deleted_at,CASE WHEN d.topic_id IS NULL THEN 'board' ELSE 'pdf' END AS kind FROM account_board_topics t LEFT JOIN account_topic_documents d ON d.student_id=t.student_id AND d.topic_id=t.id WHERE t.student_id=? AND t.deleted_at>? ORDER BY t.deleted_at DESC,t.id",[student.id,Date.now()-7*86400000]):undefined;
+     return reply(200,{topics,groups,...(trash?{trash:trash.map(row=>({...row,deletedAt:new Date(Number(row.deleted_at)).toISOString(),expiresAt:new Date(Number(row.deleted_at)+7*86400000).toISOString()}))}:{})});
     }
     teacher();
+    if(['group-create','group-rename','group-delete','move'].includes(body.operation)){
+     const group=groups.find(row=>row.id===body.groupId);
+     if(body.operation==='move'){
+      if(body.topicId==='main')fail(400,'Текущий урок остаётся вне групп.');if(!topics.some(row=>row.id===body.topicId))fail(404,'Доска не найдена.');if(body.groupId&&!group)fail(404,'Группа не найдена.');
+      await query('UPDATE account_board_topics SET group_id=? WHERE student_id=? AND id=? AND deleted_at IS NULL',[body.groupId||null,student.id,body.topicId]);
+     }else if(body.operation==='group-delete'){
+      if(!group)fail(404,'Группа не найдена.');await query('UPDATE account_board_topics SET group_id=NULL WHERE student_id=? AND group_id=?',[student.id,body.groupId]);await query('DELETE FROM account_board_groups WHERE student_id=? AND id=?',[student.id,body.groupId]);
+     }else{
+      const title=typeof body.title==='string'?body.title.trim():'';if(!title||title.length>80)fail(400,'Название группы: от 1 до 80 символов.');
+      if(body.operation==='group-create'){
+       if(groups.length>=50)fail(400,'Можно создать до 50 групп досок.');const id=randomUUID();await query('INSERT INTO account_board_groups(student_id,id,title,sort_order) VALUES(?,?,?,?)',[student.id,id,title,Math.max(-1,...groups.map(row=>row.sort_order))+1]);return reply(201,{group:{id,title}});
+      }else{if(!group)fail(404,'Группа не найдена.');await query('UPDATE account_board_groups SET title=? WHERE student_id=? AND id=?',[title,student.id,body.groupId]);}
+     }
+     return reply(200,{ok:true});
+    }
     if(body.operation==='delete'){
      if(body.topicId==='main')fail(400,'Основная доска должна остаться.');
      if(!topics.some(topic=>topic.id===body.topicId))fail(404,'Доска не найдена.');
@@ -100,6 +116,7 @@ export default async function accounts(req,res){
      const title=typeof body.title==='string'?body.title.trim():'';if(!title||title.length>80)fail(400,'Название доски: от 1 до 80 символов.');
      if(body.operation==='create'){
       if(topics.length>=100)fail(400,'Можно создать до 100 досок для ученика.');
+      if(body.groupId&&!groups.some(row=>row.id===body.groupId))fail(404,'Группа не найдена.');
       const document=body.document;
       if(document){
        if(typeof document.assetId!=='string'||document.assetId.length>80||typeof document.name!=='string'||!document.name.length||document.name.length>512||!Number.isInteger(document.pageCount)||document.pageCount<1||document.pageCount>100||!Array.isArray(document.pages)||document.pages.length!==document.pageCount||document.pages.some((page,index)=>!page||page.assetId!==`${document.assetId}:page:${index+1}`||!Number.isFinite(page.width)||!Number.isFinite(page.height)||page.width<=0||page.height<=0||page.width>10000||page.height>10000))fail(400,'Проверьте PDF и его страницы.');
@@ -108,9 +125,9 @@ export default async function accounts(req,res){
        for(const page of document.pages){const parts=await query('SELECT part,total,mime FROM account_assets WHERE student_id=? AND asset_id=? ORDER BY part',[student.id,page.assetId]);if(!parts.length||parts.length!==parts[0].total||parts.some((part,index)=>part.part!==index||part.total!==parts.length||!part.mime.startsWith('image/')))fail(400,'Страницы PDF не загрузились полностью.');}
       }
       const notebook=document?{pageCount:document.pageCount,items:document.pages.map((image,index)=>{const ratio=Math.min(1600/image.width,2376/image.height),width=image.width*ratio,height=image.height*ratio;return {id:randomUUID(),type:'image',page:index,color:'#212123',size:4,assetId:image.assetId,background:true,documentId:document.assetId,sourcePage:index+1,points:[[(1600-width)/2,0],[(1600+width)/2,height]]};})}:{items:[],pageCount:1};
-      const id=randomUUID();await query('INSERT INTO account_board_topics(student_id,id,title,sort_order,notebook,revision) VALUES(?,?,?,?,?,0)',[student.id,id,title,Math.max(...topics.map(topic=>topic.sort_order))+1,JSON.stringify(notebook)]);
+      const id=randomUUID();await query('INSERT INTO account_board_topics(student_id,id,title,sort_order,notebook,revision,group_id) VALUES(?,?,?,?,?,0,?)',[student.id,id,title,Math.max(...topics.map(topic=>topic.sort_order))+1,JSON.stringify(notebook),body.groupId||null]);
       if(document)await query('INSERT INTO account_topic_documents(student_id,topic_id,asset_id,name,page_count) VALUES(?,?,?,?,?)',[student.id,id,document.assetId,document.name,document.pageCount]);
-      return reply(201,{topic:{id,title,kind:document?'pdf':'board'}});
+      return reply(201,{topic:{id,title,kind:document?'pdf':'board',groupId:body.groupId||''}});
      }else if(body.operation==='rename'){
       if(!topics.some(topic=>topic.id===body.topicId))fail(404,'Доска не найдена.');await query('UPDATE account_board_topics SET title=? WHERE student_id=? AND id=?',[title,student.id,body.topicId]);
      }else fail(400,'Неизвестное действие.');
@@ -118,12 +135,12 @@ export default async function accounts(req,res){
     return reply(200,{ok:true});
    }
    const topicId=body.topicId||url.searchParams.get('topicId')||'main';if(typeof topicId!=='string'||topicId.length>80)fail(400,'Некорректная доска.');
-   const board=(await query('SELECT id,title,notebook,revision FROM account_board_topics WHERE student_id=? AND id=? AND deleted_at IS NULL',[student.id,topicId]))[0];if(!board)fail(404,'Доска не найдена.');
+   const board=(await query('SELECT id,title,group_id AS \"groupId\",notebook,revision FROM account_board_topics WHERE student_id=? AND id=? AND deleted_at IS NULL',[student.id,topicId]))[0];if(!board)fail(404,'Доска не найдена.');
    if(req.method==='POST'){
     const book=body.notebook;if(!book||!Array.isArray(book.items)||book.items.length>10000||!Number.isInteger(book.pageCount)||book.pageCount<1||book.pageCount>100||!Number.isInteger(body.revision)||book.items.some(item=>!item||typeof item.id!=='string'||typeof item.type!=='string'||!Number.isInteger(item.page)||item.page<0||item.page>=book.pageCount))fail(400,'Не удалось сохранить доску: проверьте данные.');
     const updated=await query('UPDATE account_board_topics SET notebook=?,revision=revision+1 WHERE student_id=? AND id=? AND revision=? AND deleted_at IS NULL RETURNING revision',[JSON.stringify(book),student.id,topicId,body.revision]);if(!updated.length)fail(409,'Доска изменена в другом окне. Обновите её перед продолжением.');return reply(200,{revision:updated[0].revision});
    }
-   const document=(await query('SELECT asset_id,name,page_count FROM account_topic_documents WHERE student_id=? AND topic_id=?',[student.id,topicId]))[0];return reply(200,{student,topic:{id:board.id,title:board.title,kind:document?'pdf':'board'},notebook:JSON.parse(board.notebook),revision:board.revision});
+   const document=(await query('SELECT asset_id,name,page_count FROM account_topic_documents WHERE student_id=? AND topic_id=?',[student.id,topicId]))[0];return reply(200,{student,topic:{id:board.id,title:board.title,groupId:board.groupId||'',kind:document?'pdf':'board'},notebook:JSON.parse(board.notebook),revision:board.revision});
   }
   if(action==='asset'){
    const id=body.assetId||url.searchParams.get('assetId'),part=Number(req.method==='POST'?body.part:url.searchParams.get('part')||0);

@@ -53,6 +53,8 @@ jobs:
           npm run verify:cabinet-design
       - name: Topic trash and PDF restoration
         run: npm run verify:topic-management
+      - name: Board groups and grouped PDF preservation
+        run: npm run verify:board-groups
       - name: Validate both container images without publishing
         run: |
           APP_DOMAIN=ulianaa-learning.pro API_DOMAIN=api.ulianaa-learning.pro POSTGRES_PASSWORD=ci-config-only JWT_SECRET=ci-config-only IMAGE_TAG="$GITHUB_SHA" \

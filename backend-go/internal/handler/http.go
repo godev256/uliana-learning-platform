@@ -31,6 +31,7 @@ type request struct {
 	Password  string          `json:"password"`
 	StudentID string          `json:"studentId"`
 	TopicID   string          `json:"topicId"`
+	GroupID   string          `json:"groupId"`
 	Operation string          `json:"operation"`
 	Title     string          `json:"title"`
 	IDs       []string        `json:"ids"`
@@ -334,7 +335,12 @@ func (h *Handler) account(w http.ResponseWriter, r *http.Request, action, operat
 				h.fail(w, e)
 				return
 			}
-			response := map[string]any{"topics": topics}
+			groups, e := h.Service.Groups(ctx, principal, id)
+			if e != nil {
+				h.fail(w, e)
+				return
+			}
+			response := map[string]any{"topics": topics, "groups": groups}
 			if principal.User.Role == "teacher" {
 				trash, e := h.Service.TrashTopics(ctx, principal, id)
 				if e != nil {
@@ -354,13 +360,27 @@ func (h *Handler) account(w http.ResponseWriter, r *http.Request, action, operat
 		}
 		switch operation {
 		case "create":
-			t, e := h.Service.CreateTopic(ctx, principal, id, body.Title, body.Document)
+			t, e := h.Service.CreateTopic(ctx, principal, id, body.Title, body.GroupID, body.Document)
 			if e != nil {
 				h.fail(w, e)
 				return
 			}
 			reply(w, 201, map[string]any{"topic": t})
 			return
+		case "group-create":
+			group, e := h.Service.CreateGroup(ctx, principal, id, body.Title)
+			if e != nil {
+				h.fail(w, e)
+				return
+			}
+			reply(w, 201, map[string]any{"group": group})
+			return
+		case "group-rename":
+			err = h.Service.RenameGroup(ctx, principal, id, body.GroupID, body.Title)
+		case "group-delete":
+			err = h.Service.DeleteGroup(ctx, principal, id, body.GroupID)
+		case "move":
+			err = h.Service.MoveTopic(ctx, principal, id, topic, body.GroupID)
 		case "rename":
 			err = h.Service.RenameTopic(ctx, principal, id, topic, body.Title)
 		case "delete":

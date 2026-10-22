@@ -370,3 +370,20 @@ development uses the same retention and cleanup interval with SQLite. Shared ass
 bytes remain because other notebooks or lesson notes may reference them. Legacy
 anonymous `/board/local` retains its original local-only deletion behavior.
 Verification: `npm run verify:topic-management`; Go: `cd backend-go && ./scripts/dev.sh test`.
+
+
+## Groups of boards
+
+Account workspaces support up to 50 named groups (migration `003_board_groups.sql`).
+Teachers can create/rename groups, add boards and PDFs directly into a group, and
+move existing boards using “Группа этой доски”. Groups collapse independently and
+show active-board highlighting and board counts. The main lesson stays pinned;
+existing boards start ungrouped. Topic ordering controls operate within a group.
+
+Group membership is server-owned metadata, separate from notebook revisions and
+contents. Removing a group moves its active and trashed boards to “Без группы”;
+restoring a trashed board keeps its group if the group still exists. Students can
+browse groups but cannot manage them. Composite owner/group foreign keys and
+teacher-only mutations prevent cross-account assignment. Node local development
+has matching group operations; anonymous legacy boards keep their original list.
+Verification: `npm run verify:board-groups` and the Go PostgreSQL integration suite.

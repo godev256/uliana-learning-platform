@@ -9,6 +9,7 @@ const schema=[
  `CREATE TABLE IF NOT EXISTS account_profiles (student_id TEXT PRIMARY KEY REFERENCES account_users(id), schedule TEXT NOT NULL DEFAULT '[]', lessons TEXT NOT NULL DEFAULT '[]')`,
  `CREATE TABLE IF NOT EXISTS account_calendar (student_id TEXT PRIMARY KEY REFERENCES account_users(id), changes TEXT NOT NULL DEFAULT '[]')`,
  `CREATE TABLE IF NOT EXISTS account_boards (student_id TEXT PRIMARY KEY REFERENCES account_users(id), notebook TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0)`,
+ `CREATE TABLE IF NOT EXISTS account_board_groups (student_id TEXT NOT NULL REFERENCES account_users(id), id TEXT NOT NULL, title TEXT NOT NULL, sort_order INTEGER NOT NULL, PRIMARY KEY(student_id,id))`,
  `CREATE TABLE IF NOT EXISTS account_board_topics (student_id TEXT NOT NULL REFERENCES account_users(id), id TEXT NOT NULL, title TEXT NOT NULL, sort_order INTEGER NOT NULL, notebook TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(student_id,id))`,
  `CREATE TABLE IF NOT EXISTS account_topic_documents (student_id TEXT NOT NULL, topic_id TEXT NOT NULL, asset_id TEXT NOT NULL, name TEXT NOT NULL, page_count INTEGER NOT NULL, PRIMARY KEY(student_id,topic_id), FOREIGN KEY(student_id,topic_id) REFERENCES account_board_topics(student_id,id))`,
  `CREATE TABLE IF NOT EXISTS account_assets (student_id TEXT NOT NULL REFERENCES account_users(id), asset_id TEXT NOT NULL, part INTEGER NOT NULL, total INTEGER NOT NULL, mime TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY(student_id,asset_id,part))`,
@@ -33,6 +34,7 @@ export async function database(){
   for(const sql of schema)await query(sql);
   const columns=process.env.DATABASE_URL?await query("SELECT column_name AS name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='account_board_topics'"):await query('PRAGMA table_info(account_board_topics)');
   if(!columns.some(column=>column.name==='deleted_at'))await query('ALTER TABLE account_board_topics ADD COLUMN deleted_at BIGINT');
+  if(!columns.some(column=>column.name==='group_id'))await query('ALTER TABLE account_board_topics ADD COLUMN group_id TEXT');
   await purgeTrash(query);
   const timer=setInterval(()=>purgeTrash(query).catch(()=>console.error('Board trash cleanup failed')),60000);timer.unref();
   return {query};

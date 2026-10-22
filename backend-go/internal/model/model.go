@@ -58,7 +58,13 @@ type Notebook struct {
 	Items     []json.RawMessage `json:"items"`
 	PageCount int               `json:"pageCount"`
 }
+type BoardGroup struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	SortOrder int    `json:"sort_order"`
+}
 type Topic struct {
+	GroupID   string `json:"groupId,omitempty"`
 	ID        string `json:"id"`
 	Title     string `json:"title"`
 	Kind      string `json:"kind"`

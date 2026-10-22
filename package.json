@@ -42,7 +42,8 @@
     "dev:go": "GO_API_URL=http://127.0.0.1:8081 VITE_GO_BACKEND=true vite --host 127.0.0.1",
     "verify:cabinet-design": "node scripts/verify-cabinet-design.mjs",
     "verify:topic-management": "node scripts/verify-topic-management.mjs",
-    "verify:student-touch": "node scripts/verify-student-touch-layout.mjs"
+    "verify:student-touch": "node scripts/verify-student-touch-layout.mjs",
+    "verify:board-groups": "node scripts/verify-board-groups.mjs"
   },
   "dependencies": {
     "framer-motion": "^12.42.2",

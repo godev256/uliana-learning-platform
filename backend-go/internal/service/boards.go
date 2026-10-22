@@ -41,7 +41,7 @@ func validTitle(title string) error {
 	}
 	return nil
 }
-func (s *Service) CreateTopic(ctx context.Context, p model.Principal, id, title string, doc *model.Document) (model.Topic, error) {
+func (s *Service) CreateTopic(ctx context.Context, p model.Principal, id, title, groupID string, doc *model.Document) (model.Topic, error) {
 	if err := Teacher(p); err != nil {
 		return model.Topic{}, err
 	}
@@ -56,7 +56,7 @@ func (s *Service) CreateTopic(ctx context.Context, p model.Principal, id, title 
 	if err = s.Boards.EnsureMain(ctx, u.ID); err != nil {
 		return model.Topic{}, err
 	}
-	topic := model.Topic{ID: uuid.NewString(), Title: title, Kind: "board"}
+	topic := model.Topic{ID: uuid.NewString(), Title: title, Kind: "board", GroupID: groupID}
 	book := model.Notebook{PageCount: 1, Items: []json.RawMessage{}}
 	if doc != nil {
 		if doc.AssetID == "" || len(doc.AssetID) > 80 || doc.Name == "" || utf8.RuneCountInString(doc.Name) > 512 || doc.PageCount < 1 || doc.PageCount > 100 || len(doc.Pages) != doc.PageCount {

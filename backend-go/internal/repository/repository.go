@@ -25,6 +25,11 @@ type Sessions interface {
 type Boards interface {
 	EnsureMain(context.Context, string) error
 	Topics(context.Context, string) ([]model.Topic, error)
+	Groups(context.Context, string) ([]model.BoardGroup, error)
+	CreateGroup(context.Context, string, model.BoardGroup) error
+	RenameGroup(context.Context, string, string, string) error
+	DeleteGroup(context.Context, string, string) error
+	MoveTopic(context.Context, string, string, string) error
 	CreateTopic(context.Context, string, model.Topic, model.Notebook, *model.Document) error
 	RenameTopic(context.Context, string, string, string) error
 	DeleteTopic(context.Context, string, string) error
