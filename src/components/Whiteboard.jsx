@@ -979,7 +979,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
           </div>
         </details>}
       </div>
-      {!(studentMode&&tool==="select")&&!["pen","highlighter","eraser"].includes(tool)&&<div className={`board-options ${optionsOpen ? "is-open" : ""}`} id="board-drawing-options">
+      {!["select","pen","highlighter","eraser"].includes(tool)&&<div className={`board-options ${optionsOpen ? "is-open" : ""}`} id="board-drawing-options">
         <div className="board-colors" role="group" aria-label={usingHighlighter ? "Цвет выделителя" : "Цвет"}>{(usingHighlighter ? highlightColors : colors).map(([value, label]) => <button key={value} type="button" style={{ "--swatch": value }} aria-label={label} aria-pressed={activeColor === value} onClick={() => editStyle("color", value)} />)}</div>
         <label className="board-size">Толщина <input type="range" aria-label={usingHighlighter ? "Толщина выделителя" : "Толщина ручки"} min={usingHighlighter ? 16 : 2} max={usingHighlighter ? 72 : 12} value={activeSize} onChange={event => editStyle("size", Number(event.target.value))} /><output>{activeSize}</output></label>
       </div>}
@@ -987,7 +987,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     </div>
     <div className="board-mobile-view" role="group" aria-label="Масштаб листа">
       <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}><BoardIcon name="minus"/></button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title={`Вернуть масштаб ${Math.round(defaultZoom*100)}%`} onClick={()=>changeZoom(defaultZoom)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}><BoardIcon name="plus"/></button></div>
-      {!(studentMode&&tool==="select")&&!["pen","highlighter","eraser"].includes(tool)&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина <BoardIcon name={optionsOpen?"chevron-up":"chevron-down"}/></button>}
+      {!["select","pen","highlighter","eraser"].includes(tool)&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина <BoardIcon name={optionsOpen?"chevron-up":"chevron-down"}/></button>}
     </div>
     {!studentMode && tool === "select" && !groupItems.length && (selectedSolid || selectedItem?.type==="attachment") && selectedItem?.type!=="image" && (!pdfMode||selectedItem?.type==="attachment") && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
       {selectedItem?.type==="attachment" ? <button className="board-action" onClick={()=>{setFileNotice("");setOpenFile(selectedItem.id);}}>Открыть файл</button> : <>

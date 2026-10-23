@@ -588,7 +588,7 @@
  .whiteboard .board-history .board-action,
  .whiteboard .board-grid-toggle,
  .whiteboard .board-export .board-action,
- .whiteboard .board-mobile-view .board-action {
+ .whiteboard .board-mobile-view > div > .board-action {
   display:inline-flex; justify-content:center; align-items:center; width:44px; height:44px; min-height:44px; padding:0;
   border:1px solid #a0b7aa88; border-radius:12px; background:rgb(251 250 246 / .9); color:#2f493f;
   box-shadow:0 2px 10px #243f3012;
