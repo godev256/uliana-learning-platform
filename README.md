@@ -401,3 +401,21 @@ Figure menus, drawing options, and confirmation dialogs remain within the viewpo
 Desktop layout and student permissions are preserved.
 `npm run verify:teacher-touch` covers phone/tablet portrait and landscape; local
 runs check Chromium and WebKit, while CI runs the available Chromium browser.
+
+
+## Insert theory PDF pages into the current board
+
+The teacher toolbar's “Добавить PDF в эту доску” button accepts a PDF up to 20 MB.
+Choose the beginning (default), a position before any existing sheet, or the end.
+All imported pages are locked backgrounds with writable ink above them. Existing
+objects shift with their sheets; the current board/topic, group and original PDF
+remain unchanged. Insertion is one undo/redo operation and is included in account
+sync and exported lesson PDFs. Assets upload before notebook changes; malformed
+files, processing errors and the 100-sheet limit do not change existing content.
+The sidebar's “PDF как новая доска” remains a separate workflow.
+
+Laptop controls now use separate rounded tiles for teachers and pupils, with a
+transparent container and the existing desktop layout. Touch controls retain their
+floating layout. `npm run verify:inline-pdf` checks both board kinds, every insertion
+position, old content, undo/redo, persistence, cross-device pupil annotations, export
+and failure cases. Set `BOARD_BROWSER=webkit` for the same check in WebKit.

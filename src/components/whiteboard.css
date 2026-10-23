@@ -577,3 +577,31 @@
  /* Keep fixed confirmation dialogs attached to the viewport, outside the topic popover. */
  .whiteboard .board-topic-rail > details { background:rgb(251 250 246 / .94); border:1px solid #a0b7aa88; box-shadow:0 2px 10px #243f3012; }
 }
+
+/* Individual tool tiles on laptops, matching the touch controls. */
+@media(min-width:1025px) and (not (any-pointer:coarse)){
+ .whiteboard .board-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; padding:8px 16px; background:transparent; border:0; }
+ .whiteboard .board-tools { gap:6px; flex-wrap:nowrap; order:0; }
+ .whiteboard .board-actions > .board-history { order:1; display:flex; flex-wrap:nowrap; gap:6px; padding:0; margin:0; border:0; }
+ .whiteboard .board-tools > .board-tool,
+ .whiteboard .board-figures > summary,
+ .whiteboard .board-history .board-action,
+ .whiteboard .board-grid-toggle,
+ .whiteboard .board-export .board-action,
+ .whiteboard .board-mobile-view .board-action {
+  display:inline-flex; justify-content:center; align-items:center; width:44px; height:44px; min-height:44px; padding:0;
+  border:1px solid #a0b7aa88; border-radius:12px; background:rgb(251 250 246 / .9); color:#2f493f;
+  box-shadow:0 2px 10px #243f3012;
+ }
+ .whiteboard .board-tool[aria-pressed="true"],.whiteboard .board-action[aria-pressed="true"] { background:#dcebdfea; border-color:#6d937e; }
+ .whiteboard .board-tools > .board-tool:hover,.whiteboard .board-action:not(:disabled):hover,.whiteboard .board-figures > summary:hover { background:#e5efdf; }
+ .whiteboard .board-grid-toggle > span,.whiteboard .board-export .board-action > span { display:none; }
+ .whiteboard .board-grid-toggle { order:2; }
+ .whiteboard .board-actions > .board-export { order:3; margin-left:auto; }
+ .whiteboard .board-mobile-view { order:4; padding:0; background:none; }
+ .whiteboard .board-mobile-view > div { display:flex; align-items:center; gap:6px; }
+ .whiteboard .board-mobile-view .board-zoom-reset { min-width:52px !important; width:52px; }
+ .whiteboard .board-options { order:5; flex-basis:100%; }
+ .whiteboard .board-selection-bar { order:6; flex-basis:100%; }
+}
+.board-pdf-filename { overflow-wrap:anywhere; color:#2f493f; font-weight:500; }

@@ -1,5 +1,6 @@
 // All interface icons share one grid, stroke weight, caps and joins.
 const paths={
+ 'pdf-add':'M5 3h9l5 5v5M5 3v18h7M14 3v6h5M16 15v8m-4-4h8M8 13h4m-4 4h2',
  folder:'M3 7V5h7l2 3h9v12H3V7Z',
  hand:'M8 13V5a1.5 1.5 0 0 1 3 0v7-9a1.5 1.5 0 0 1 3 0v9-8a1.5 1.5 0 0 1 3 0v9-6a1.5 1.5 0 0 1 3 0v8c0 4-2 6-5 7h-4c-2-1-3-2-4-4l-3-4a1.5 1.5 0 0 1 2.4-1.8L8 15',
  pen:'m4 20 1-5L16 4a2.1 2.1 0 0 1 3 3L8 18l-4 2Zm10-14 3 3M4 22h16',

@@ -4,6 +4,7 @@ import DrawingToolSettings from "./board-tool-settings.jsx";
 import ImageCrop from "./board-image-crop.jsx";
 import { AttachmentViewer } from "./board-attachments.jsx";
 import { storeAsset,readAsset,blobDataUrl } from "./board-assets.js";
+import {preparePdfTopic} from "./board-pdf-topic.js";
 import { pdfPageCount,pdfPageImage } from "./board-pdf.js";
 import { eraserPolyline, eraserHits, cutInkPolyline, eraserCursor } from "./board-eraser.js";
 import { appendStrokePoints } from "./board-strokes.js";
@@ -90,7 +91,8 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const syncedNotebook=useRef(syncNotebook);
   const [pageCount, setPageCount] = useState(initial.pageCount);
   const pageCountRef = useRef(pageCount);
-  const fileInput=useRef(null);
+  const fileInput=useRef(null),pdfInsertInput=useRef(null);
+  const [insertPdf,setInsertPdf]=useState(null);
   const [openFile,setOpenFile]=useState(null);
   const [cropId,setCropId]=useState(null);
   const [fileBusy,setFileBusy]=useState(false);
@@ -322,12 +324,12 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   useEffect(() => {
     const handle = event => {
       if (typingTarget(event.target) && event.key !== "Escape") return;
-      if ((event.code === "KeyP" || event.key.toLowerCase() === "p") && !event.metaKey && !event.ctrlKey && !event.altKey && !event.isComposing && !gesture.current && !renamePoint && deletePage===null && insertPage===null && !openFile && !cropId && !expanding) {
+      if ((event.code === "KeyP" || event.key.toLowerCase() === "p") && !event.metaKey && !event.ctrlKey && !event.altKey && !event.isComposing && !gesture.current && !renamePoint && deletePage===null && insertPage===null && !insertPdf && !openFile && !cropId && !expanding) {
         event.preventDefault();setTool("pen");setSettingsTool(null);setSelectedId(null);setSelectedIds([]);setSelectedAxesId(null);setLineStarts({});setPlaneStarts({});
         if(figuresMenu.current)figuresMenu.current.open=false;
         return;
       }
-      if ((event.key === "Delete" || event.key === "Backspace") && tool === "select" && !studentMode && !gesture.current && !renamePoint && deletePage === null && insertPage === null && !openFile && !cropId && !expanding) {
+      if ((event.key === "Delete" || event.key === "Backspace") && tool === "select" && !studentMode && !gesture.current && !renamePoint && deletePage === null && insertPage === null && !insertPdf && !openFile && !cropId && !expanding) {
         const ids = new Set(selectedIds.length ? selectedIds : [selectedId]);
         const removable = itemsRef.current.filter(item => ids.has(item.id) && !item.background);
         if (removable.length) {
@@ -339,7 +341,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         }
         return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z" && !renamePoint && deletePage===null && insertPage===null && !openFile && !cropId) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z" && !renamePoint && deletePage===null && insertPage===null && !insertPdf && !openFile && !cropId) {
         event.preventDefault(); if (event.shiftKey) redo(); else undo();
       }
       if (event.key === "Escape") {
@@ -374,7 +376,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   };
   useEffect(() => {
     const copy = event => {
-      if (studentMode || typingTarget(event.target) || tool !== "select" || gesture.current || renamePoint || deletePage !== null || insertPage !== null || openFile || cropId) return;
+      if (studentMode || typingTarget(event.target) || tool !== "select" || gesture.current || renamePoint || deletePage !== null || insertPage !== null || insertPdf || openFile || cropId) return;
       const ids = new Set(selectedIds.length ? selectedIds : [selectedId]);
       const selected = itemsRef.current.filter(item => ids.has(item.id) && !item.background);
       if (!selected.length || !event.clipboardData) return;
@@ -390,7 +392,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
 
   useEffect(() => {
     const paste = event => {
-      if(studentMode || typingTarget(event.target) || gesture.current || renamePoint || deletePage!==null || insertPage!==null || openFile || cropId || expanding || importing.current)return;
+      if(studentMode || typingTarget(event.target) || gesture.current || renamePoint || deletePage!==null || insertPage!==null || insertPdf || openFile || cropId || expanding || importing.current)return;
       const clipboard = event.clipboardData;
       const text = clipboard?.getData("text/plain") ?? "";
       const data = clipboard?.getData(BOARD_CLIPBOARD) || (text.startsWith(CLIPBOARD_PREFIX) ? text.slice(CLIPBOARD_PREFIX.length) : "");
@@ -438,6 +440,27 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     window.addEventListener("paste",paste);
     return ()=>window.removeEventListener("paste",paste);
   });
+
+  const insertPdfPages = async event => {
+    event.preventDefault();
+    if(studentMode||!insertPdf||fileBusy||importing.current||gesture.current||expanding)return;
+    const {file,index}=insertPdf;
+    importing.current=true;setFileBusy(true);setInsertPdf(current=>({...current,error:"",progress:"Подготавливаем PDF…"}));
+    try {
+      const prepared=await preparePdfTopic(file,progress=>setInsertPdf(current=>current?{...current,progress}:current),100-pageCountRef.current);
+      const count=pageCountRef.current,added=prepared.notebook.pageCount;
+      if(count+added>100)throw new Error("На доске может быть до 100 листов. В этом PDF слишком много страниц для текущей доски.");
+      if(itemsRef.current.length+prepared.notebook.items.length>10000)throw new Error("На доске слишком много объектов. Добавьте PDF в другую доску.");
+      if(!Number.isInteger(index)||index<0||index>count)throw new Error("Листы доски изменились. Выберите место вставки ещё раз.");
+      const pages=prepared.notebook.items.map(item=>({...item,page:item.page+index,name:`${file.name} · ${item.sourcePage}`}));
+      remember(itemsRef.current);
+      update([...itemsRef.current.map(item=>item.page>=index?{...item,page:item.page+added}:item),...pages]);
+      pendingPage.current=index;updatePageCount(count+added);
+      setSelectedId(null);setSelectedIds([]);setSelectedAxesId(null);setLineStarts({});setPlaneStarts({});setTool("pen");
+      setInsertPdf(null);setFileNotice(`PDF «${file.name}» добавлен в эту доску: ${added} стр. На страницах можно писать.`);
+    }catch(error){setInsertPdf(current=>current?{...current,progress:"",error:error?.name==="PasswordException"?"PDF защищён паролем.":error?.message||"Не удалось добавить PDF. Попробуйте ещё раз."}:current);}
+    finally{importing.current=false;setFileBusy(false);}
+  };
 
   const importFiles = async files => {
     if(studentMode || importing.current || !files.length)return;
@@ -926,6 +949,8 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(["pen","highlighter","eraser"].includes(value))drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-label={label} aria-haspopup={["pen","highlighter","eraser"].includes(value)?"dialog":undefined} aria-expanded={["pen","highlighter","eraser"].includes(value)?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть ручку или выделение" : value === "select" && studentMode ? "Листать доску · масштаб двумя пальцами" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(["pen","highlighter","eraser"].includes(value) ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span></button>)}
         <button className="board-tool board-touch-download" type="button" aria-label="Скачать доску PDF" title="Скачать доску PDF" disabled={exporting} onClick={downloadPdf}><BoardIcon name="download"/></button>
         {!studentMode&&<><button type="button" className="board-tool" aria-label="Загрузить файл" title="Загрузить файл" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><BoardIcon name="upload"/></button>
+        <button type="button" className="board-tool" aria-label="Добавить PDF в эту доску" title="Добавить PDF в эту доску" disabled={fileBusy||pageCount>=100} onClick={()=>pdfInsertInput.current?.click()}><BoardIcon name="pdf-add"/></button>
+        <input ref={pdfInsertInput} type="file" accept="application/pdf,.pdf" hidden aria-label="PDF в текущую доску" disabled={fileBusy} onChange={event=>{const file=event.target.files?.[0];event.target.value="";if(file)setInsertPdf({file,index:0,progress:"",error:""});}}/>
         <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/></>}
         {!studentMode&&<details ref={figuresMenu} className="board-figures">
           <summary className={`board-tool ${activeFigure ? "is-active" : ""}`} aria-label="Фигуры" title="Фигуры"><BoardIcon name="figures"/></summary>
@@ -971,7 +996,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       <svg ref={node => { sheets.current[page] = node; }} data-page-index={page} className={`board-paper ${tool === "highlighter" ? "is-highlighting" : ""} ${tool === "eraser" ? "is-erasing" : tool === "select" ? `is-selecting ${manipulation === "rotate" ? "is-rotating" : ""}` : ""}`} viewBox={`0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}`} aria-label={`Поле для рисования, лист ${page + 1}`} onPointerDown={start} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish}>
         <defs><pattern id={`board-grid-${page}`} width={GRID_SIZE} height={GRID_SIZE} patternUnits="userSpaceOnUse"><path d={`M ${GRID_SIZE} 0 L 0 0 0 ${GRID_SIZE}`} fill="none" stroke="#e2e9e4" strokeWidth="1" /></pattern></defs>
         <rect width={PAGE_WIDTH} height={PAGE_HEIGHT} fill="#ffffff" />
-        {grid && (!pdfMode || !items.some(item=>item.page===page && item.background)) && <rect data-page-grid="true" width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={`url(#board-grid-${page})`} />}
+        {grid && !items.some(item=>item.page===page && item.background) && <rect data-page-grid="true" width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={`url(#board-grid-${page})`} />}
         {[...displayedItems.filter(item=>item.page===page && item.id!==draft?.id),...(draft?.page===page ? [draft] : [])].sort((a,b)=>Number(b.type==="image")-Number(a.type==="image")).map(item=><Shape key={item.id} item={item} erase={inkItem(item) && !item.background && item.id!==draft?.id && tool==="eraser"} onFileOpen={id=>{setFileNotice("");setOpenFile(id);}} selectable={tool==="select" || tool==="axes" && item.type==="axes"} visualization={visualizationProps(item)}/>)}
         {!studentMode && tool === "select" && displayedItems.filter(item => item.page === page && !item.background && !isVisualization(item.type)).map(item => <SelectionHitArea key={item.id} item={draft?.id === item.id ? draft : item} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
         {!studentMode && tool === "select" && !cropId && (draft?.id === selectedId ? [draft] : items.filter(item => item.id === selectedId)).filter(item => item.page === page).map(item => <SelectionControls key={item.id} item={item} onCrop={()=>setCropId(item.id)} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
@@ -1010,6 +1035,14 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       {renamePoint.field==="freePoints" && <div className="board-coordinate-inputs">{["X","Y","Z"].map((axis,index)=><label key={axis}>{axis}<input aria-label={`Координата ${axis}`} type="number" step="any" min="-100" max="100" value={pointCoordinates[index]} onChange={event=>setPointCoordinates(values=>values.map((value,i)=>i===index ? event.target.value : value))}/></label>)}</div>}
       <p id="point-name-help" role={renameError ? "alert" : undefined}>{renameError || "До 8 букв, цифр или штрихов. Вершины фигуры не переименовываются."}</p>
       <div><button className="board-action" type="button" onClick={()=>setRenamePoint(null)}>Отмена</button><button className="board-action" type="submit">Сохранить</button></div>
+    </form></div>}
+    {!studentMode&&insertPdf&&<div className="board-dialog-backdrop" onKeyDown={event=>{if(event.key==="Escape"&&!fileBusy){event.stopPropagation();setInsertPdf(null);}}}><form className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="insert-pdf-title" onSubmit={insertPdfPages}>
+      <h2 id="insert-pdf-title">Добавить PDF в эту доску</h2>
+      <p className="board-pdf-filename">{insertPdf.file.name}</p>
+      <p>Страницы PDF станут листами этой доски. На них можно писать, а существующие записи сохранятся.</p>
+      <label>Куда добавить PDF<select autoFocus aria-label="Куда добавить PDF" value={insertPdf.index} disabled={fileBusy} onChange={event=>setInsertPdf(current=>({...current,index:Number(event.target.value)}))}>{Array.from({length:pageCount+1},(_,index)=><option value={index} key={index}>{index===0?"В начало — перед первым листом":index===pageCount?"В конец доски":`Перед листом ${index+1}`}</option>)}</select></label>
+      {insertPdf.progress&&<p role="status">{insertPdf.progress}</p>}{insertPdf.error&&<p role="alert">{insertPdf.error}</p>}
+      <div><button type="button" className="board-action" disabled={fileBusy} onClick={()=>setInsertPdf(null)}>Отмена</button><button type="submit" className="board-action" disabled={fileBusy}>{fileBusy?"Добавляем…":"Добавить страницы PDF"}</button></div>
     </form></div>}
     {!studentMode && insertPage !== null && <div className="board-dialog-backdrop"><form className="board-dialog" role="dialog" aria-modal="true" aria-labelledby="insert-page-title" onSubmit={event=>{event.preventDefault();insertBlankPage(Number(insertPage));}}>
       <h2 id="insert-page-title">Лист в клетку для заметок</h2>
