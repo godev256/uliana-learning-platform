@@ -45,7 +45,8 @@
     "verify:student-touch": "node scripts/verify-student-touch-layout.mjs",
     "verify:board-groups": "node scripts/verify-board-groups.mjs",
     "verify:teacher-touch": "node scripts/verify-teacher-touch-layout.mjs",
-    "verify:inline-pdf": "node scripts/verify-inline-pdf.mjs"
+    "verify:inline-pdf": "node scripts/verify-inline-pdf.mjs",
+    "verify:paste-feedback": "node scripts/verify-paste-feedback.mjs"
   },
   "dependencies": {
     "framer-motion": "^12.42.2",

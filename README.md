@@ -419,3 +419,18 @@ transparent container and the existing desktop layout. Touch controls retain the
 floating layout. `npm run verify:inline-pdf` checks both board kinds, every insertion
 position, old content, undo/redo, persistence, cross-device pupil annotations, export
 and failure cases. Set `BOARD_BROWSER=webkit` for the same check in WebKit.
+
+
+## Feedback while pasting screenshots
+
+Image paste immediately displays a transient frame, then a blurred preview with a
+loading indicator until the image is uploaded and committed. The frame is separate
+from the notebook, does not intercept drawing input, and is excluded from saved data and PDF
+exports. Errors remain visible with Retry/Dismiss actions. Multiple images have
+independent jobs. Account topic switches wait for pending uploads and flush the
+result to the original board. Leaving the page uses the existing unsaved-work guard;
+unmounted boards ignore late upload completions.
+`npm run verify:paste-feedback` holds asset requests to exercise loading, failure,
+retry/dismiss, ink layering, multi-image paste, undo/redo and account persistence.
+The test dispatches clipboard events without altering the user's system clipboard.
+Use `BOARD_BROWSER=webkit` to run it in WebKit.

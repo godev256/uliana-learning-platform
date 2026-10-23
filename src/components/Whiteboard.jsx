@@ -1,6 +1,7 @@
 import {mergeNotebooks} from "../account/board-sync.js";
 import BoardIcon from "./board-icons.jsx";
 import DrawingToolSettings from "./board-tool-settings.jsx";
+import PastePlaceholder from "./board-paste-placeholder.jsx";
 import ImageCrop from "./board-image-crop.jsx";
 import { AttachmentViewer } from "./board-attachments.jsx";
 import { storeAsset,readAsset,blobDataUrl } from "./board-assets.js";
@@ -68,7 +69,7 @@ function loadNotebook(source,storageKey=NOTEBOOK_KEY) {
 
 async function renderPage(node) {
   const copy = node.cloneNode(true);
-  copy.querySelectorAll("[data-axis-controls], [data-selection-controls], [data-selection-hit], [data-viz-controls]").forEach(node => node.remove());
+  copy.querySelectorAll("[data-axis-controls], [data-selection-controls], [data-selection-hit], [data-viz-controls], [data-pending-image]").forEach(node => node.remove());
   await Promise.all([...copy.querySelectorAll("image[data-board-asset]")].map(async node=>{
     const blob=await readAsset(node.dataset.boardAsset);if(!blob)throw new Error("Файл не найден");node.setAttribute("href",await blobDataUrl(blob));
   }));
@@ -84,7 +85,7 @@ async function renderPage(node) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNotebookChange,onNotebookPreview,syncNotebook,cloudStatus,topicsPanel,pdfMode=false,studentMode=false,backHref="/",backLabel="← На сайт"}) {
+export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNotebookChange,onNotebookPreview,onImagePasteWork,syncNotebook,cloudStatus,topicsPanel,pdfMode=false,studentMode=false,backHref="/",backLabel="← На сайт"}) {
   const [initial] = useState(()=>loadNotebook(initialNotebook,storageKey));
   const [items, setItems] = useState(initial.items);
   const itemsRef = useRef(items);
@@ -93,6 +94,8 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const pageCountRef = useRef(pageCount);
   const fileInput=useRef(null),pdfInsertInput=useRef(null);
   const [insertPdf,setInsertPdf]=useState(null);
+  const [pendingImages,setPendingImages]=useState([]),pasteJobs=useRef(new Map()),pasteMounted=useRef(true);
+  useEffect(()=>{pasteMounted.current=true;return()=>{pasteMounted.current=false;pasteJobs.current.clear();};},[]);
   const [openFile,setOpenFile]=useState(null);
   const [cropId,setCropId]=useState(null);
   const [fileBusy,setFileBusy]=useState(false);
@@ -374,6 +377,30 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     const scale=PAGE_WIDTH/page.bounds.width,center=[(visibleX-page.bounds.left)*scale,(visibleY-page.bounds.top)*scale];
     return {page, center};
   };
+  const showPasteJobs=()=>{if(pasteMounted.current)setPendingImages([...pasteJobs.current.values()].map(job=>({...job})));};
+  const dismissPasteJob=id=>{pasteJobs.current.delete(id);showPasteJobs();};
+  const pasteFrame=(center,width,height)=>{const x=Math.max(0,Math.min(DRAW_WIDTH-width,center[0]-width/2)),y=Math.max(0,Math.min(PAGE_HEIGHT-height,center[1]-height/2));return [[x,y],[x+width,y+height]];};
+  const runImagePaste=job=>{
+    const active=()=>pasteMounted.current&&pasteJobs.current.get(job.id)===job;
+    const work=(async()=>{
+      try{
+        job.status="loading";showPasteJobs();
+        // Give the placeholder a paint before decoding/compressing a large screenshot.
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        const image=await clipboardImage(job.file);if(!active())return;
+        const ratio=Math.min(1,1200/image.width,1400/image.height);
+        job.points=pasteFrame(job.center,image.width*ratio,image.height*ratio);job.preview=image.src;showPasteJobs();
+        const assetId=await storeAsset(await(await fetch(image.src)).blob());if(!active())return;
+        if(job.page>=pageCountRef.current||job.pageCount!==pageCountRef.current)throw new Error("Листы изменились во время загрузки. Повторите вставку.");
+        const item={id:job.id,type:"image",page:job.page,color:"#212123",size:4,points:job.points,assetId},next=[...itemsRef.current,item];
+        remember(itemsRef.current);update(next);onNotebookPreview?.({items:next,pageCount:pageCountRef.current});setSelectedId(item.id);setTool("pen");
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        if(active())dismissPasteJob(job.id);
+      }catch(error){if(active()){job.status="error";showPasteJobs();setFileNotice(error?.message?.includes("Листы изменились")?error.message:"Не удалось загрузить изображение. Нажмите «Повторить» в рамке или вставьте его ещё раз.");}}
+    })();
+    onImagePasteWork?.(work);return work;
+  };
+  const retryImagePaste=id=>{const job=pasteJobs.current.get(id);if(!job||job.status!=="error")return;const target=pasteTarget();if(target){job.page=target.page.index;job.center=target.center;job.pageCount=pageCountRef.current;}setFileNotice("");void runImagePaste(job);};
   useEffect(() => {
     const copy = event => {
       if (studentMode || typingTarget(event.target) || tool !== "select" || gesture.current || renamePoint || deletePage !== null || insertPage !== null || insertPdf || openFile || cropId) return;
@@ -422,20 +449,10 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       event.preventDefault();
       const target = pasteTarget();
       if (!target) return;
-      const {page, center} = target;
-      void (async()=>{
-        try {
-          for(const file of files) {
-            const image=await clipboardImage(file);
-            if(page.index>=pageCountRef.current)continue;
-            const ratio=Math.min(1,1200/image.width,1400/image.height),width=image.width*ratio,height=image.height*ratio;
-            const x=Math.max(0,Math.min(DRAW_WIDTH-width,center[0]-width/2)),y=Math.max(0,Math.min(PAGE_HEIGHT-height,center[1]-height/2));
-            const assetId=await storeAsset(await(await fetch(image.src)).blob());
-            const item={id:boardId(),type:"image",page:page.index,color:"#212123",size:4,points:[[x,y],[x+width,y+height]],assetId};
-            remember(itemsRef.current);update([...itemsRef.current,item]);setSelectedId(item.id);setTool("pen");
-          }
-        } catch {setStatus("Не удалось вставить изображение. Попробуйте скопировать скриншот ещё раз.");}
-      })();
+      const jobs=files.map((file,index)=>{const center=target.center.map(value=>value+index*24);return {id:boardId(),file,page:target.page.index,pageCount:pageCountRef.current,center,points:pasteFrame(center,760,500),status:"loading"};});
+      jobs.forEach(job=>pasteJobs.current.set(job.id,job));
+      flushSync(showPasteJobs);
+      jobs.forEach(job=>{void runImagePaste(job);});
     };
     window.addEventListener("paste",paste);
     return ()=>window.removeEventListener("paste",paste);
@@ -947,7 +964,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     <div className="board-controls">
     <div className="board-toolbar" role="toolbar" aria-label="Инструменты доски">
       <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(["pen","highlighter","eraser"].includes(value))drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-label={label} aria-haspopup={["pen","highlighter","eraser"].includes(value)?"dialog":undefined} aria-expanded={["pen","highlighter","eraser"].includes(value)?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть ручку или выделение" : value === "select" && studentMode ? "Листать доску · масштаб двумя пальцами" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(["pen","highlighter","eraser"].includes(value) ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span></button>)}
-        <button className="board-tool board-touch-download" type="button" aria-label="Скачать доску PDF" title="Скачать доску PDF" disabled={exporting} onClick={downloadPdf}><BoardIcon name="download"/></button>
+        <button className="board-tool board-touch-download" type="button" aria-label="Скачать доску PDF" title="Скачать доску PDF" disabled={exporting||pendingImages.some(job=>job.status==="loading")} onClick={downloadPdf}><BoardIcon name="download"/></button>
         {!studentMode&&<><button type="button" className="board-tool" aria-label="Загрузить файл" title="Загрузить файл" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><BoardIcon name="upload"/></button>
         <button type="button" className="board-tool" aria-label="Добавить PDF в эту доску" title="Добавить PDF в эту доску" disabled={fileBusy||pageCount>=100} onClick={()=>pdfInsertInput.current?.click()}><BoardIcon name="pdf-add"/></button>
         <input ref={pdfInsertInput} type="file" accept="application/pdf,.pdf" hidden aria-label="PDF в текущую доску" disabled={fileBusy} onChange={event=>{const file=event.target.files?.[0];event.target.value="";if(file)setInsertPdf({file,index:0,progress:"",error:""});}}/>
@@ -984,7 +1001,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     {!studentMode&&tool==="select"&&groupItems.length>0&&<div className="board-selection-bar board-group-bar"><span>Выделено: {groupItems.length} · потяните внутри рамки</span><button type="button" className="board-action" onClick={()=>setSelectedIds([])}>Снять выделение</button></div>}
     <div className="board-actions">
       <div className="board-history" role="group" aria-label="История и листы"><button className="board-action" type="button" disabled={!past.length} aria-label="Отменить" title="Отменить" onClick={undo}><BoardIcon name="undo"/><span className="board-history-label"> Отменить</span></button><button className="board-action" type="button" disabled={!future.length} aria-label="Повторить" title="Повторить" onClick={redo}><BoardIcon name="redo"/><span className="board-history-label"> Повторить</span></button>{!studentMode&&<><button className="board-action" type="button" disabled={pageCount >= 100} onClick={addPage} aria-label="+ Добавить лист" title="Добавить лист"><BoardIcon name="plus"/><span>Добавить лист</span></button><button className="board-action" type="button" disabled={pageCount<=1} aria-label="Удалить лист" title="Удалить лист" onClick={()=>setDeletePage({mode:"single",from:String(pageCount),to:String(pageCount)})}><BoardIcon name="minus"/><span>Удалить лист</span></button></>}</div>
-      <div className="board-export"><button className="board-action board-pdf-button" type="button" aria-label="Скачать конспект PDF" title="Скачать конспект PDF" disabled={exporting} onClick={downloadPdf}><BoardIcon name="download"/><span>{exporting ? "Готовим…" : "Конспект"}</span></button></div>
+      <div className="board-export"><button className="board-action board-pdf-button" type="button" aria-label="Скачать конспект PDF" title="Скачать конспект PDF" disabled={exporting||pendingImages.some(job=>job.status==="loading")} onClick={downloadPdf}><BoardIcon name="download"/><span>{exporting ? "Готовим…" : "Конспект"}</span></button></div>
     </div>
     </div>
     <div className={`board-workspace${topicsPanel?" has-topics":""}`}>
@@ -998,6 +1015,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         <rect width={PAGE_WIDTH} height={PAGE_HEIGHT} fill="#ffffff" />
         {grid && !items.some(item=>item.page===page && item.background) && <rect data-page-grid="true" width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={`url(#board-grid-${page})`} />}
         {[...displayedItems.filter(item=>item.page===page && item.id!==draft?.id),...(draft?.page===page ? [draft] : [])].sort((a,b)=>Number(b.type==="image")-Number(a.type==="image")).map(item=><Shape key={item.id} item={item} erase={inkItem(item) && !item.background && item.id!==draft?.id && tool==="eraser"} onFileOpen={id=>{setFileNotice("");setOpenFile(id);}} selectable={tool==="select" || tool==="axes" && item.type==="axes"} visualization={visualizationProps(item)}/>)}
+        {pendingImages.filter(job=>job.page===page).map(job=><PastePlaceholder key={job.id} job={job} scale={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)} onRetry={()=>retryImagePaste(job.id)} onDismiss={()=>dismissPasteJob(job.id)}/>)}
         {!studentMode && tool === "select" && displayedItems.filter(item => item.page === page && !item.background && !isVisualization(item.type)).map(item => <SelectionHitArea key={item.id} item={draft?.id === item.id ? draft : item} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
         {!studentMode && tool === "select" && !cropId && (draft?.id === selectedId ? [draft] : items.filter(item => item.id === selectedId)).filter(item => item.page === page).map(item => <SelectionControls key={item.id} item={item} onCrop={()=>setCropId(item.id)} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
         {!studentMode&&tool==="select"&&groupItems.length>0&&groupItems[0].page===page&&(()=>{

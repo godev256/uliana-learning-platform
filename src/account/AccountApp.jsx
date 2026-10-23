@@ -59,6 +59,8 @@ function AccountBoards({id,studentMode}){
 }
 function CloudBoard({id,topicId='main',studentMode,topicTitle,topicsPanel,beforeSwitch}){
  const[data,setData]=useState(null),[error,setError]=useState(''),[recovery,setRecovery]=useState(null),[syncState,setSyncState]=useState({dirty:false}),[localCopy,setLocalCopy]=useState(true);
+ const imagePasteWork=useRef(new Set());
+ const trackImagePaste=useCallback(work=>{imagePasteWork.current.add(work);void work.finally(()=>imagePasteWork.current.delete(work)).catch(()=>{});},[]);
  const sync=useRef(null),suffix=topicId==='main'?id:`${id}:${topicId}`,draftKey=`uliana-account-draft:${suffix}`;
  const load=useCallback((remote,book)=>{
   sync.current?.stop();setBoardOwner(id);
@@ -73,14 +75,14 @@ function CloudBoard({id,topicId='main',studentMode,topicTitle,topicsPanel,before
   load(remote,draft?.notebook??remote.notebook);
  }).catch(err=>{if(active)setError(err.message);});return()=>{active=false;sync.current?.stop();setBoardOwner(null);};},[id,topicId,draftKey,load]);
  const changed=useCallback(notebook=>sync.current?.change(notebook),[]);
- const flush=useCallback(()=>sync.current?.flush()??Promise.resolve(true),[]);
+ const flush=useCallback(async()=>{while(imagePasteWork.current.size)await Promise.allSettled([...imagePasteWork.current]);return sync.current?.flush()??true;},[]);
  useEffect(()=>{beforeSwitch.current=flush;return()=>{if(beforeSwitch.current===flush)beforeSwitch.current=null;};},[beforeSwitch,flush]);
- useEffect(()=>{const guard=event=>{if(sync.current?.dirty||sync.current?.saving){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',guard);const refresh=()=>void sync.current?.refresh();window.addEventListener('online',refresh);window.addEventListener('focus',refresh);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};},[]);
+ useEffect(()=>{const guard=event=>{if(sync.current?.dirty||sync.current?.saving||imagePasteWork.current.size){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',guard);const refresh=()=>void sync.current?.refresh();window.addEventListener('online',refresh);window.addEventListener('focus',refresh);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};},[]);
  if(error)return <div className="account-shell"><a href="/cabinet" aria-label="← В кабинет"><BoardIcon name="arrow-left"/>В кабинет</a><Message error={error}/></div>;
  if(recovery)return <div className="account-shell"><section className="account-card"><h1>На устройстве остались записи</h1><p>Доска также изменилась в другом окне. Выберите версию, которую хотите открыть. Восстановление записей с устройства заменит сохранённую версию.</p><button className="account-secondary" onClick={()=>{localStorage.removeItem(draftKey);load(recovery.remote,recovery.remote.notebook);setRecovery(null);}}>Открыть сохранённую версию</button><button className="account-primary" onClick={()=>{load(recovery.remote,recovery.draft.notebook);setRecovery(null);}}>Восстановить мои записи</button></section></div>;
  if(!data)return <BoardLoading/>;
  const status=!localCopy?'Не удалось сохранить копию на устройстве. Скачайте PDF.':syncState.error?'Связь прервана. Записи на этом устройстве сохранены; повторяем подключение.':'Доска сохраняется автоматически.';
- return <Whiteboard studentMode={studentMode} pdfMode={data.topic?.kind==='pdf'} topicsPanel={topicsPanel} initialNotebook={data.notebook} syncNotebook={data.syncNotebook} storageKey={`uliana-account-board:${suffix}`} onNotebookChange={changed} onNotebookPreview={changed} backHref="/cabinet" backLabel="← В кабинет" cloudStatus={<>{data.student.login} · {topicTitle??data.topic?.title} · {status}{syncState.error&&syncState.dirty&&<button type="button" className="account-inline" onClick={flush}>Повторить сохранение</button>}</>}/>;
+ return <Whiteboard studentMode={studentMode} pdfMode={data.topic?.kind==='pdf'} topicsPanel={topicsPanel} initialNotebook={data.notebook} syncNotebook={data.syncNotebook} storageKey={`uliana-account-board:${suffix}`} onNotebookChange={changed} onNotebookPreview={changed} onImagePasteWork={trackImagePaste} backHref="/cabinet" backLabel="← В кабинет" cloudStatus={<>{data.student.login} · {topicTitle??data.topic?.title} · {status}{syncState.error&&syncState.dirty&&<button type="button" className="account-inline" onClick={flush}>Повторить сохранение</button>}</>}/>;
 }
 export default function AccountApp({personalBoard=false}){
  const[session,setSession]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
