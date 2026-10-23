@@ -387,3 +387,17 @@ browse groups but cannot manage them. Composite owner/group foreign keys and
 teacher-only mutations prevent cross-account assignment. Node local development
 has matching group operations; anonymous legacy boards keep their original list.
 Verification: `npm run verify:board-groups` and the Go PostgreSQL integration suite.
+
+
+## Shared phone and tablet board layout
+
+Teachers and pupils share the full-width sheet viewport and translucent floating
+controls on touch devices. Both start at 100% and can pull the first sheet down
+or sideways using the hand tool and the existing 96px margins. Topic/group lists
+collapse after selection. The teacher retains file uploads, figures, grid toggling,
+selection controls, trash, groups, and page management; page buttons are compact
+icons above undo/redo. The tool strip scrolls independently on short screens.
+Figure menus, drawing options, and confirmation dialogs remain within the viewport.
+Desktop layout and student permissions are preserved.
+`npm run verify:teacher-touch` covers phone/tablet portrait and landscape; local
+runs check Chromium and WebKit, while CI runs the available Chromium browser.

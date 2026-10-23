@@ -140,7 +140,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const drawingButtons=useRef({});
   const closeToolSettings=useCallback(restoreFocus=>{setSettingsTool(null);if(restoreFocus)drawingButtons.current[settingsTool]?.focus();},[settingsTool]);
   useEffect(()=>{if(settingsTool&&settingsTool!==tool)setSettingsTool(null);},[tool,settingsTool]);
-  const [defaultZoom]=useState(()=>studentMode&&window.matchMedia(BOARD_TOUCH_QUERY).matches?1:BOARD_DEFAULT_ZOOM);
+  const [defaultZoom]=useState(()=>window.matchMedia(BOARD_TOUCH_QUERY).matches?1:BOARD_DEFAULT_ZOOM);
   const {viewportRef,contentRef,viewportWidth,zoom,changeZoom,captureHandlers,startPan,movePan,endPan} = useBoardViewport(() => {
     if (gesture.current) {
       onNotebookPreview?.({items:gesture.current.before,pageCount:pageCountRef.current});
@@ -148,7 +148,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     }
     cancelStrokeFrame();
     gesture.current = null; lastSelectionPress.current=null; setDraft(null); setGroupDraft(null); setMarquee(null); setLineStarts({}); setPlaneStarts({});
-  },defaultZoom,studentMode&&defaultZoom===1?96:0);
+  },defaultZoom,defaultZoom===1?96:0);
   const sheets = useRef([]);
   const figuresMenu = useRef(null);
   const activeFigure = figures.find(([value]) => value === tool);
@@ -913,7 +913,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     finally { setExporting(false); }
   };
 
-  return <main className={`whiteboard${studentMode?" is-student":""}`} style={{"--board-zoom":zoom,"--board-view-width":viewportWidth?`${viewportWidth}px`:"100%","--board-eraser-cursor":eraserCursor(eraserSize)}}>
+  return <main className={`whiteboard ${studentMode?"is-student":"is-teacher"}`} style={{"--board-zoom":zoom,"--board-view-width":viewportWidth?`${viewportWidth}px`:"100%","--board-eraser-cursor":eraserCursor(eraserSize)}}>
     {settingsTool&&<DrawingToolSettings eraser={settingsTool==="eraser"} eraserMode={eraserMode} onEraserMode={setEraserMode} anchor={drawingButtons.current[settingsTool]} highlighter={settingsTool==="highlighter"} colors={settingsTool==="highlighter"?highlightColors:colors} color={activeColor} size={settingsTool==="eraser"?eraserSize:activeSize} onChange={settingsTool==="eraser"?(_key,value)=>setEraserSize(value):editStyle} onClose={closeToolSettings}/>}
     <div className="board-surface">
     <header className="board-header">
@@ -924,7 +924,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     <div className="board-controls">
     <div className="board-toolbar" role="toolbar" aria-label="Инструменты доски">
       <div className="board-tools">{tools.map(([value, label]) => <button key={value} ref={node=>{if(["pen","highlighter","eraser"].includes(value))drawingButtons.current[value]=node;}} type="button" className="board-tool" aria-label={label} aria-haspopup={["pen","highlighter","eraser"].includes(value)?"dialog":undefined} aria-expanded={["pen","highlighter","eraser"].includes(value)?settingsTool===value:undefined} aria-controls={settingsTool===value?"board-tool-settings":undefined} aria-pressed={tool === value} aria-keyshortcuts={value==="pen"?"P":undefined} title={value === "pen" ? "Ручка (P)" : value === "eraser" ? "Ластик: стереть ручку или выделение" : value === "select" && studentMode ? "Листать доску · масштаб двумя пальцами" : value === "select" ? "Выбрать и переместить · двойное нажатие и перетягивание — выделить область" : label} onClick={() => { setTool(value); setSettingsTool(["pen","highlighter","eraser"].includes(value) ? settingsTool===value?null:value : null); }}><span aria-hidden="true"><BoardIcon name={value==="select"?"hand":value}/></span></button>)}
-        {studentMode&&<button className="board-tool board-touch-download" type="button" aria-label="Скачать доску PDF" title="Скачать доску PDF" disabled={exporting} onClick={downloadPdf}><BoardIcon name="download"/></button>}
+        <button className="board-tool board-touch-download" type="button" aria-label="Скачать доску PDF" title="Скачать доску PDF" disabled={exporting} onClick={downloadPdf}><BoardIcon name="download"/></button>
         {!studentMode&&<><button type="button" className="board-tool" aria-label="Загрузить файл" title="Загрузить файл" disabled={fileBusy} onClick={()=>fileInput.current?.click()}><BoardIcon name="upload"/></button>
         <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/></>}
         {!studentMode&&<details ref={figuresMenu} className="board-figures">
@@ -941,7 +941,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         <div className="board-colors" role="group" aria-label={usingHighlighter ? "Цвет выделителя" : "Цвет"}>{(usingHighlighter ? highlightColors : colors).map(([value, label]) => <button key={value} type="button" style={{ "--swatch": value }} aria-label={label} aria-pressed={activeColor === value} onClick={() => editStyle("color", value)} />)}</div>
         <label className="board-size">Толщина <input type="range" aria-label={usingHighlighter ? "Толщина выделителя" : "Толщина ручки"} min={usingHighlighter ? 16 : 2} max={usingHighlighter ? 72 : 12} value={activeSize} onChange={event => editStyle("size", Number(event.target.value))} /><output>{activeSize}</output></label>
       </div>}
-      {!studentMode&&<button type="button" className="board-action board-grid-toggle" aria-pressed={grid} onClick={() => setGrid(!grid)}><BoardIcon name="grid"/><span>Клетка</span></button>}
+      {!studentMode&&<button type="button" className="board-action board-grid-toggle" aria-label="Клетка" title="Клетка" aria-pressed={grid} onClick={() => setGrid(!grid)}><BoardIcon name="grid"/><span>Клетка</span></button>}
     </div>
     <div className="board-mobile-view" role="group" aria-label="Масштаб листа">
       <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}><BoardIcon name="minus"/></button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title={`Вернуть масштаб ${Math.round(defaultZoom*100)}%`} onClick={()=>changeZoom(defaultZoom)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}><BoardIcon name="plus"/></button></div>

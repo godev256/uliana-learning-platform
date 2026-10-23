@@ -43,7 +43,8 @@
     "verify:cabinet-design": "node scripts/verify-cabinet-design.mjs",
     "verify:topic-management": "node scripts/verify-topic-management.mjs",
     "verify:student-touch": "node scripts/verify-student-touch-layout.mjs",
-    "verify:board-groups": "node scripts/verify-board-groups.mjs"
+    "verify:board-groups": "node scripts/verify-board-groups.mjs",
+    "verify:teacher-touch": "node scripts/verify-teacher-touch-layout.mjs"
   },
   "dependencies": {
     "framer-motion": "^12.42.2",
