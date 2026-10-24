@@ -436,7 +436,7 @@
 .board-topic-delete:disabled { opacity:.4; cursor:default; }
 .board-topic-delete-confirm { color:#9a4436; }
 
-.board-topic-row { display:grid; grid-template-columns:minmax(0,1fr) 32px; }
+.board-topic-row { display:grid; grid-template-columns:minmax(0,1fr); }
 .board-topic-row > .board-topic-delete { grid-column:1/-1; margin-top:0; }
 .board-topic-rename-hint { display:block; color:#647269; font-size:11px; margin:4px 0 8px; }
 
@@ -529,8 +529,7 @@
 .board-group-contents { display:grid; gap:6px; margin:0 7px 8px 12px; padding-left:8px; border-left:1px solid #c6d6c6; }
 .board-group-contents .board-topic-card { min-height:44px; padding:8px; gap:6px; font-size:12px; background:#fbfaf6; }
 .board-group-contents .board-topic-card.is-active { background:#e5efdf; }
-.board-group-contents .board-topic-rename { width:28px; }
-.board-group-contents .board-topic-row { grid-template-columns:minmax(0,1fr) 28px; }
+.board-group-contents .board-topic-row { grid-template-columns:minmax(0,1fr); }
 .board-group-empty { margin:6px 0; font-size:12px; color:#647269; }
 .board-ungrouped { display:grid; gap:6px; }
 .board-ungrouped h3 { display:flex; justify-content:space-between; margin:4px 2px; font-size:11px; font-weight:400; color:#647269; }
