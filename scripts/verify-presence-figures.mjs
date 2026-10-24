@@ -9,6 +9,8 @@ try{
  const other=(await(await api.post('/api/account?action=topics',{data:{studentId:owner.id,operation:'create',title:'Другая тема'}})).json()).topic;
  const path=`/api/account?action=board&studentId=${owner.id}`,load=async()=>(await(await api.get(path)).json());
  const tc=await browser.newContext({storageState:await api.storageState(),viewport:{width:1440,height:1000}}),sc=await browser.newContext({viewport:{width:820,height:1180},isMobile:true,hasTouch:true});await sc.request.post(origin+'/api/account?action=login',{data:{login:'pupil01',password:'Student-cursors-12345'},headers:{Origin:origin}});
+ // Exercise the HTTP fallback too; the dedicated realtime test requires WebSocket.
+ await tc.addInitScript(()=>{window.WebSocket=undefined;});await sc.addInitScript(()=>{window.WebSocket=undefined;});
  t=await tc.newPage();s=await sc.newPage();const errors=[];for(const p of[t,s])p.on('pageerror',e=>errors.push(e.message));
  await Promise.all([t.goto(origin+`/cabinet/board/${owner.id}`),s.goto(origin+`/cabinet/board/${owner.id}`)]);for(const p of[t,s])await p.locator('.board-paper').first().waitFor();const revision=(await load()).revision;
  const tb=await t.locator('.board-paper').first().boundingBox();await t.mouse.move(tb.x+200,tb.y+200);await s.locator('[data-remote-cursor="teacher"]').waitFor();const transform=await s.locator('[data-remote-cursor="teacher"]').getAttribute('transform');const [x,y]=transform.match(/translate\(([^)]+)\)/)[1].split(' ').map(Number);

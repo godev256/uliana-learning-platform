@@ -85,5 +85,6 @@ func (h *Handler) presence(w http.ResponseWriter, r *http.Request, p model.Princ
 		return
 	}
 	peers := h.cursors.exchange(owner.ID+"\x00"+topic, p.User.ID+":"+body.ClientID, p.User.Role, body.Cursor, time.Now())
+	h.live.cursor(owner.ID+"\x00"+topic, p.User.ID+":"+body.ClientID, p.User.Role, body.Cursor)
 	reply(w, 200, map[string]any{"peers": peers})
 }

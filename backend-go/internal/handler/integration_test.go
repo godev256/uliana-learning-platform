@@ -143,6 +143,7 @@ func TestPostgresHTTPWorkflow(t *testing.T) {
 	if rev != 0 {
 		t.Fatal("initial revision")
 	}
+	verifyLiveBoard(t, teacher, student, other, u.ID, otherID)
 	presencePath := "/api/account?action=presence&studentId=" + u.ID
 	teacherCursor := map[string]any{"studentId": u.ID, "clientId": "teacher-cursor-client", "cursor": map[string]any{"page": 0, "x": 220, "y": 330}}
 	teacher.call("POST", presencePath, teacherCursor, 200)

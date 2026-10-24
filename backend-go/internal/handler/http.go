@@ -21,6 +21,7 @@ import (
 const cookieName = "uliana_go_session"
 
 type Handler struct {
+	live    liveRooms
 	cursors cursorStore
 	Service *service.Service
 	Config  config.Config
@@ -28,31 +29,33 @@ type Handler struct {
 	Log     *slog.Logger
 }
 type request struct {
-	ClientID  string          `json:"clientId"`
-	Cursor    *boardCursor    `json:"cursor"`
-	Login     string          `json:"login"`
-	Password  string          `json:"password"`
-	StudentID string          `json:"studentId"`
-	TopicID   string          `json:"topicId"`
-	GroupID   string          `json:"groupId"`
-	Operation string          `json:"operation"`
-	Title     string          `json:"title"`
-	IDs       []string        `json:"ids"`
-	Notebook  *model.Notebook `json:"notebook"`
-	Revision  *int64          `json:"revision"`
-	Document  *model.Document `json:"document"`
-	AssetID   string          `json:"assetId"`
-	Part      *int            `json:"part"`
-	Total     int             `json:"total"`
-	Mime      string          `json:"mime"`
-	Data      string          `json:"data"`
-	Schedule  json.RawMessage `json:"schedule"`
-	Lessons   json.RawMessage `json:"lessons"`
-	Calendar  json.RawMessage `json:"calendar"`
+	Patch     *model.BoardPatch `json:"patch"`
+	ClientID  string            `json:"clientId"`
+	Cursor    *boardCursor      `json:"cursor"`
+	Login     string            `json:"login"`
+	Password  string            `json:"password"`
+	StudentID string            `json:"studentId"`
+	TopicID   string            `json:"topicId"`
+	GroupID   string            `json:"groupId"`
+	Operation string            `json:"operation"`
+	Title     string            `json:"title"`
+	IDs       []string          `json:"ids"`
+	Notebook  *model.Notebook   `json:"notebook"`
+	Revision  *int64            `json:"revision"`
+	Document  *model.Document   `json:"document"`
+	AssetID   string            `json:"assetId"`
+	Part      *int              `json:"part"`
+	Total     int               `json:"total"`
+	Mime      string            `json:"mime"`
+	Data      string            `json:"data"`
+	Schedule  json.RawMessage   `json:"schedule"`
+	Lessons   json.RawMessage   `json:"lessons"`
+	Calendar  json.RawMessage   `json:"calendar"`
 }
 
 func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/board/live", h.boardLive)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { reply(w, 200, map[string]string{"status": "ok"}) })
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -104,6 +107,10 @@ func (h *Handler) Routes() http.Handler {
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			w.Header().Set("Access-Control-Max-Age", "600")
 			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if r.URL.Path == "/api/board/live" {
+			mux.ServeHTTP(w, r)
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
@@ -400,14 +407,34 @@ func (h *Handler) account(w http.ResponseWriter, r *http.Request, action, operat
 		}
 	case "board":
 		if write {
-			if body.Notebook == nil || body.Revision == nil {
+			if (body.Notebook == nil && body.Patch == nil) || body.Revision == nil {
 				h.fail(w, model.Bad("Нужны notebook и revision."))
 				return
 			}
-			revision, e := h.Service.SaveBoard(ctx, principal, id, topic, *body.Notebook, *body.Revision)
+			var revision int64
+			var e error
+			if body.Patch != nil {
+				if body.Patch.Upsert == nil {
+					body.Patch.Upsert = []json.RawMessage{}
+				}
+				if body.Patch.Remove == nil {
+					body.Patch.Remove = []string{}
+				}
+				revision, e = h.Service.SaveBoardPatch(ctx, principal, id, topic, *body.Patch, *body.Revision)
+			} else {
+				revision, e = h.Service.SaveBoard(ctx, principal, id, topic, *body.Notebook, *body.Revision)
+			}
 			if e != nil {
 				h.fail(w, e)
 				return
+			}
+			owner, e := h.Service.Owner(ctx, principal, id)
+			if e == nil {
+				roomTopic := topic
+				if roomTopic == "" {
+					roomTopic = "main"
+				}
+				h.live.commit(owner.ID+"\x00"+roomTopic, revision, body.Patch)
 			}
 			reply(w, 200, map[string]int64{"revision": revision})
 			return
@@ -418,17 +445,33 @@ func (h *Handler) account(w http.ResponseWriter, r *http.Request, action, operat
 				h.fail(w, model.Bad("Некорректная ревизия."))
 				return
 			}
-			book, err := h.Service.WaitBoard(ctx, principal, id, topic, since)
+			changedRevision, err := h.Service.WaitBoardRevision(ctx, principal, id, topic, since)
 			if err != nil {
 				if r.Context().Err() == nil {
 					h.fail(w, err)
 				}
 				return
 			}
-			if book == nil {
+			if changedRevision == nil {
 				reply(w, 200, map[string]any{"revision": since, "unchanged": true})
 			} else {
-				reply(w, 200, book)
+				owner, e := h.Service.Owner(ctx, principal, id)
+				roomTopic := topic
+				if roomTopic == "" {
+					roomTopic = "main"
+				}
+				if e == nil && r.URL.Query().Get("patches") == "1" {
+					if patches, ok := h.live.since(owner.ID+"\x00"+roomTopic, since, *changedRevision); ok {
+						reply(w, 200, map[string]any{"revision": *changedRevision, "fromRevision": since, "patches": patches})
+						return
+					}
+				}
+				book, e := h.Service.Board(ctx, principal, id, topic)
+				if e != nil {
+					h.fail(w, e)
+					return
+				}
+				reply(w, 200, map[string]any{"student": book.Student, "topic": book.Topic, "notebook": book.Notebook, "revision": book.Revision, "patchProtocol": true})
 			}
 			return
 		}
@@ -437,7 +480,7 @@ func (h *Handler) account(w http.ResponseWriter, r *http.Request, action, operat
 			h.fail(w, e)
 			return
 		}
-		reply(w, 200, book)
+		reply(w, 200, map[string]any{"student": book.Student, "topic": book.Topic, "notebook": book.Notebook, "revision": book.Revision, "patchProtocol": true})
 		return
 	case "asset":
 		asset := body.AssetID

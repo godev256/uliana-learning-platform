@@ -1,3 +1,5 @@
+import {applyNotebookPatch} from '../src/account/board-patches.js';
+import {liveBroadcast} from './board-live.js';
 import {exchangeCursors} from './board-presence.js';
 import {randomUUID} from 'node:crypto';
 import {database,production} from './database.js';
@@ -81,7 +83,7 @@ export default async function accounts(req,res){
    const topicId=body.topicId||'main',c=body.cursor;
    if(typeof body.clientId!=='string'||!/^[a-zA-Z0-9_-]{16,80}$/.test(body.clientId)||typeof topicId!=='string'||topicId.length>80||c!==null&&(!c||!Number.isInteger(c.page)||c.page<0||c.page>=100||!Number.isFinite(c.x)||!Number.isFinite(c.y)||c.x<0||c.x>1680||c.y<0||c.y>2376))fail(400,'Некорректный указатель.');
    if(!(await query('SELECT id FROM account_board_topics WHERE student_id=? AND id=? AND deleted_at IS NULL',[student.id,topicId])).length)fail(404,'Доска не найдена.');
-   return reply(200,{peers:exchangeCursors(student.id+':'+topicId,session.id+':'+body.clientId,session.role,c)});
+   const peers=exchangeCursors(student.id+':'+topicId,session.id+':'+body.clientId,session.role,c);liveBroadcast(student.id+':'+topicId,{type:'cursor',id:session.id+':'+body.clientId,role:session.role,cursor:c});return reply(200,{peers});
   }
   if(action==='topics'||action==='board'){
    // Copy the existing notebook once; topic 'main' keeps legacy URLs working.
@@ -145,10 +147,10 @@ export default async function accounts(req,res){
    const topicId=body.topicId||url.searchParams.get('topicId')||'main';if(typeof topicId!=='string'||topicId.length>80)fail(400,'Некорректная доска.');
    const board=(await query('SELECT id,title,group_id AS \"groupId\",notebook,revision FROM account_board_topics WHERE student_id=? AND id=? AND deleted_at IS NULL',[student.id,topicId]))[0];if(!board)fail(404,'Доска не найдена.');
    if(req.method==='POST'){
-    const book=body.notebook;if(!book||!Array.isArray(book.items)||book.items.length>10000||!Number.isInteger(book.pageCount)||book.pageCount<1||book.pageCount>100||!Number.isInteger(body.revision)||book.items.some(item=>!item||typeof item.id!=='string'||typeof item.type!=='string'||!Number.isInteger(item.page)||item.page<0||item.page>=book.pageCount))fail(400,'Не удалось сохранить доску: проверьте данные.');
-    const updated=await query('UPDATE account_board_topics SET notebook=?,revision=revision+1 WHERE student_id=? AND id=? AND revision=? AND deleted_at IS NULL RETURNING revision',[JSON.stringify(book),student.id,topicId,body.revision]);if(!updated.length)fail(409,'Доска изменена в другом окне. Обновите её перед продолжением.');return reply(200,{revision:updated[0].revision});
+    if(body.revision!==board.revision)fail(409,'Доска изменена в другом окне.');let book=body.notebook;if(body.patch){try{book=applyNotebookPatch(JSON.parse(board.notebook),body.patch);}catch{fail(400,'Некорректные изменения доски.');}}if(!book||!Array.isArray(book.items)||book.items.length>10000||!Number.isInteger(book.pageCount)||book.pageCount<1||book.pageCount>100||!Number.isInteger(body.revision)||book.items.some(item=>!item||typeof item.id!=='string'||typeof item.type!=='string'||!Number.isInteger(item.page)||item.page<0||item.page>=book.pageCount))fail(400,'Не удалось сохранить доску: проверьте данные.');
+    const updated=await query('UPDATE account_board_topics SET notebook=?,revision=revision+1 WHERE student_id=? AND id=? AND revision=? AND deleted_at IS NULL RETURNING revision',[JSON.stringify(book),student.id,topicId,body.revision]);if(!updated.length)fail(409,'Доска изменена в другом окне. Обновите её перед продолжением.');liveBroadcast(student.id+':'+topicId,{type:'commit',revision:updated[0].revision,patch:body.patch??null});return reply(200,{revision:updated[0].revision});
    }
-   const document=(await query('SELECT asset_id,name,page_count FROM account_topic_documents WHERE student_id=? AND topic_id=?',[student.id,topicId]))[0];return reply(200,{student,topic:{id:board.id,title:board.title,groupId:board.groupId||'',kind:document?'pdf':'board'},notebook:JSON.parse(board.notebook),revision:board.revision});
+   const document=(await query('SELECT asset_id,name,page_count FROM account_topic_documents WHERE student_id=? AND topic_id=?',[student.id,topicId]))[0];return reply(200,{student,topic:{id:board.id,title:board.title,groupId:board.groupId||'',kind:document?'pdf':'board'},notebook:JSON.parse(board.notebook),revision:board.revision,patchProtocol:true});
   }
   if(action==='asset'){
    const id=body.assetId||url.searchParams.get('assetId'),part=Number(req.method==='POST'?body.part:url.searchParams.get('part')||0);

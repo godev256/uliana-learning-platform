@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {notebookPatch,applyNotebookPatch} from '../src/account/board-patches.js';
+import {BoardSync,mergeNotebooks} from '../src/account/board-sync.js';
+const item=id=>({id,type:'pen',page:0,points:[[1,2],[3,4]]}),initial={pageCount:2,items:[item('a'),item('b')]};
+for(const next of[{pageCount:1,items:[]},{pageCount:2,items:[initial.items[1],initial.items[0],item('c')]},{pageCount:3,items:[{...initial.items[0],points:[[8,9]]}]}])assert.deepEqual(applyNotebookPatch(initial,notebookPatch(initial,next)),next);
+assert.throws(()=>applyNotebookPatch(initial,{pageCount:2,upsert:[],remove:[],order:['a','a']}));
+const local={...initial,items:[...initial.items,item('ours')]},continued={...local,items:[...local.items,item('next')]},remote={...local,items:[...local.items,item('theirs')]};
+let finish;const sync=new BoardSync({remote:{revision:0,notebook:initial,patchProtocol:true},request:()=>new Promise(resolve=>finish=resolve)});
+sync.change(local);const first=sync.saveOnce();sync.change(continued);const receiving=sync.receive({type:'commit',revision:2,patch:notebookPatch(local,remote)});finish({revision:1});await first;await receiving;
+assert.equal(sync.revision,2);assert.deepEqual(new Set(sync.local.items.map(i=>i.id)),new Set(['a','b','ours','next','theirs']));assert.ok(sync.dirty,'The next local edit still needs saving');sync.stop();
+let attempts=0;const retry=new BoardSync({remote:{revision:0,notebook:initial},request:async()=>{if(!attempts++)throw Object.assign(Error('Temporary network failure'),{status:503});return {revision:1};}});retry.change(local);assert.equal(await retry.saveOnce(),false);await new Promise(r=>setTimeout(r,1150));assert.equal(attempts,2);assert.equal(retry.dirty,false);retry.stop();
+const deleted={pageCount:2,items:[initial.items[1]]};assert.deepEqual(mergeNotebooks(initial,deleted,{...initial,items:[{...initial.items[0],size:7},initial.items[1]]}),deleted);
+console.log('Board sync: patch ordering/removal, receive during continuous saving, concurrent edits and automatic retry passed.');

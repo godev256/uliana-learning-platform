@@ -9,6 +9,6 @@ export default defineConfig(({mode})=>{
   const goAPI=process.env.GO_API_URL;
   return {
     plugins: [react(), tailwindcss(), pdfAssets(), ...(!goAPI?[accountsApi()]:[])],
-    server: goAPI ? {proxy:{'/api':{target:goAPI,changeOrigin:false}}} : undefined,
+    server: goAPI ? {proxy:{'/api':{target:goAPI,changeOrigin:false,ws:true}}} : undefined,
   };
 });

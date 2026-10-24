@@ -63,6 +63,8 @@ jobs:
         run: npm run verify:presence-figures
       - name: Live ink and preloaded multipage boards
         run: npm run verify:live-pages
+      - name: Real Go transport, large notebook latency and cursor smoothing
+        run: npm run verify:realtime
       - name: Clipboard image loading feedback and recovery
         run: npm run verify:paste-feedback
       - name: Capture failed browser checks

@@ -195,9 +195,9 @@ func (s *Service) Board(ctx context.Context, p model.Principal, id, topic string
 	return book, err
 }
 
-// WaitBoard returns only when a new revision exists, or after an idle heartbeat.
+// WaitBoardRevision waits for a new revision without loading unchanged page contents.
 // Scope is authorized before waiting; each revision query still excludes deleted boards.
-func (s *Service) WaitBoard(ctx context.Context, p model.Principal, id, topic string, since int64) (*model.Board, error) {
+func (s *Service) WaitBoardRevision(ctx context.Context, p model.Principal, id, topic string, since int64) (*int64, error) {
 	u, err := s.Owner(ctx, p, id)
 	if err != nil {
 		return nil, err
@@ -215,9 +215,7 @@ func (s *Service) WaitBoard(ctx context.Context, p model.Principal, id, topic st
 			return nil, err
 		}
 		if revision != since {
-			book, err := s.Boards.Board(ctx, u.ID, topic)
-			book.Student = u
-			return &book, err
+			return &revision, nil
 		}
 		select {
 		case <-ctx.Done():

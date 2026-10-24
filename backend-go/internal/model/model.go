@@ -54,6 +54,12 @@ type LoginResult struct {
 	TokenType   string `json:"tokenType"`
 	ExpiresIn   int64  `json:"expiresIn"`
 }
+type BoardPatch struct {
+	PageCount int               `json:"pageCount"`
+	Upsert    []json.RawMessage `json:"upsert"`
+	Remove    []string          `json:"remove"`
+	Order     []string          `json:"order,omitempty"`
+}
 type Notebook struct {
 	Items     []json.RawMessage `json:"items"`
 	PageCount int               `json:"pageCount"`

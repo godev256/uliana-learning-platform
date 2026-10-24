@@ -60,26 +60,27 @@ function AccountBoards({id,studentMode}){
 }
 function CloudBoard({id,topicId='main',studentMode,topicTitle,topicsPanel,beforeSwitch}){
  const[data,setData]=useState(null),[error,setError]=useState(''),[recovery,setRecovery]=useState(null),[syncState,setSyncState]=useState({dirty:false}),[localCopy,setLocalCopy]=useState(true);
- const imagePasteWork=useRef(new Set()),presence=useRef(null);
+ const imagePasteWork=useRef(new Set()),presence=useRef(null),backup=useRef(null);
  const trackImagePaste=useCallback(work=>{imagePasteWork.current.add(work);void work.finally(()=>imagePasteWork.current.delete(work)).catch(()=>{});},[]);
  const sync=useRef(null),suffix=topicId==='main'?id:`${id}:${topicId}`,draftKey=`uliana-account-draft:${suffix}`;
  const load=useCallback((remote,book)=>{
-  sync.current?.stop();presence.current?.stop();setBoardOwner(id);
-  presence.current=new BoardPresence((body,options)=>accountRequest("presence",{...body,studentId:id,topicId},{},options));presence.current.start();
-  const session=new BoardSync({remote,local:book,request:(body,options={})=>accountRequest('board',body===undefined?undefined:{...body,studentId:id,topicId},{studentId:id,topicId,...(options.wait?{since:String(options.since)}:{})},options),
+  sync.current?.stop();presence.current?.stop();backup.current?.();setBoardOwner(id);
+  let latestDraft,timer;const saveDraft=()=>{clearTimeout(timer);timer=null;if(!latestDraft)return;try{if(latestDraft.dirty)localStorage.setItem(draftKey,JSON.stringify({revision:latestDraft.revision,notebook:latestDraft.notebook}));else localStorage.removeItem(draftKey);setLocalCopy(true);}catch{setLocalCopy(false);}};backup.current=saveDraft;
+  presence.current=new BoardPresence((body,options)=>accountRequest("presence",{...body,studentId:id,topicId},{},options),{studentId:id,topicId,onCommit:message=>sync.current?.receive(message),onReady:message=>{if(!message||message.revision>sync.current?.revision)void sync.current?.catchUp();}});
+  const session=new BoardSync({remote,local:book,request:(body,options={})=>accountRequest('board',body===undefined?undefined:{...(body.patch?{patch:body.patch,revision:body.revision}:body),studentId:id,topicId},{studentId:id,topicId,...(options.wait?{since:String(options.since)}:{}),...(options.patches?{patches:'1'}:{})},options),
    onRemote:(notebook,base)=>setData(current=>({...current,syncNotebook:{notebook,base}})),
-   onState:state=>{setSyncState(state);try{if(state.dirty)localStorage.setItem(draftKey,JSON.stringify({revision:state.revision,notebook:state.notebook}));else localStorage.removeItem(draftKey);setLocalCopy(true);}catch{setLocalCopy(false);}}
-  });sync.current=session;setData({...remote,notebook:book,syncNotebook:null,presence:presence.current});session.start();session.state();
+   onState:state=>{setSyncState(state);latestDraft=state;if(!state.dirty)saveDraft();else if(!timer)timer=setTimeout(saveDraft,500);}
+  });sync.current=session;setData({...remote,notebook:book,syncNotebook:null,presence:presence.current});session.start();session.state();presence.current.start();
  },[id,topicId,draftKey]);
  useEffect(()=>{let active=true;accountRequest('board',undefined,{studentId:id,topicId}).then(remote=>{
   if(!active)return;let draft;try{draft=JSON.parse(localStorage.getItem(draftKey));}catch{}
   if(draft&&JSON.stringify(draft.notebook)!==JSON.stringify(remote.notebook)&&draft.revision!==remote.revision){setRecovery({remote,draft});return;}
   load(remote,draft?.notebook??remote.notebook);
- }).catch(err=>{if(active)setError(err.message);});return()=>{active=false;sync.current?.stop();presence.current?.stop();setBoardOwner(null);};},[id,topicId,draftKey,load]);
+ }).catch(err=>{if(active)setError(err.message);});return()=>{active=false;sync.current?.stop();presence.current?.stop();backup.current?.();setBoardOwner(null);};},[id,topicId,draftKey,load]);
  const changed=useCallback(notebook=>sync.current?.change(notebook),[]);
  const flush=useCallback(async()=>{while(imagePasteWork.current.size)await Promise.allSettled([...imagePasteWork.current]);return sync.current?.flush()??true;},[]);
  useEffect(()=>{beforeSwitch.current=flush;return()=>{if(beforeSwitch.current===flush)beforeSwitch.current=null;};},[beforeSwitch,flush]);
- useEffect(()=>{const guard=event=>{if(sync.current?.dirty||sync.current?.saving||imagePasteWork.current.size){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',guard);const refresh=()=>void sync.current?.refresh();window.addEventListener('online',refresh);window.addEventListener('focus',refresh);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};},[]);
+ useEffect(()=>{const guard=event=>{if(sync.current?.dirty||sync.current?.saving||imagePasteWork.current.size){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',guard);const saveDraft=()=>backup.current?.();window.addEventListener('pagehide',saveDraft);const refresh=()=>void sync.current?.refresh();window.addEventListener('online',refresh);window.addEventListener('focus',refresh);return()=>{window.removeEventListener('beforeunload',guard);window.removeEventListener('pagehide',saveDraft);window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};},[]);
  if(error)return <div className="account-shell"><a href="/cabinet" aria-label="← В кабинет"><BoardIcon name="arrow-left"/>В кабинет</a><Message error={error}/></div>;
  if(recovery)return <div className="account-shell"><section className="account-card"><h1>На устройстве остались записи</h1><p>Доска также изменилась в другом окне. Выберите версию, которую хотите открыть. Восстановление записей с устройства заменит сохранённую версию.</p><button className="account-secondary" onClick={()=>{localStorage.removeItem(draftKey);load(recovery.remote,recovery.remote.notebook);setRecovery(null);}}>Открыть сохранённую версию</button><button className="account-primary" onClick={()=>{load(recovery.remote,recovery.draft.notebook);setRecovery(null);}}>Восстановить мои записи</button></section></div>;
  if(!data)return <BoardLoading/>;

@@ -320,11 +320,16 @@ export default function Whiteboard({presence,initialNotebook,storageKey=NOTEBOOK
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem(storageKey, JSON.stringify({ items, pageCount })); if(!cloudStatus)setStatus("Сохранено в этом браузере"); }
-    catch { setStatus("Не удалось сохранить. Скачайте PDF, чтобы не потерять записи."); }
-    const book={items,pageCount};
-    if(JSON.stringify(book)!==JSON.stringify(lastNotifiedBook.current)){lastNotifiedBook.current=book;onNotebookChange?.(book);}
-  }, [items, pageCount,storageKey,onNotebookChange]);
+    const book={items,pageCount},previous=lastNotifiedBook.current;
+    if(previous.pageCount!==pageCount||previous.items!==items){lastNotifiedBook.current=book;onNotebookChange?.(book);}
+  }, [items,pageCount,onNotebookChange]);
+
+  useEffect(()=>{
+    const store=()=>{try{localStorage.setItem(storageKey,JSON.stringify({items:itemsRef.current,pageCount:pageCountRef.current}));if(!cloudStatus)setStatus("Сохранено в этом браузере");}catch{setStatus("Не удалось сохранить. Скачайте PDF, чтобы не потерять записи.");}};
+    // Persist batches without serializing an entire lesson during every incoming pen movement.
+    const timer=setInterval(store,1000);window.addEventListener('pagehide',store);
+    return()=>{clearInterval(timer);window.removeEventListener('pagehide',store);store();};
+  },[storageKey]);
 
   useEffect(()=>{
     if(!syncNotebook||syncNotebook===syncedNotebook.current)return;
@@ -338,7 +343,7 @@ export default function Whiteboard({presence,initialNotebook,storageKey=NOTEBOOK
     syncedNotebook.current=syncNotebook;
     const merged=mergeNotebooks(base,{items:itemsRef.current,pageCount:pageCountRef.current},syncNotebook.notebook);
     lastNotifiedBook.current=merged;onNotebookChange?.(merged);
-    if(JSON.stringify(merged.items)!==JSON.stringify(itemsRef.current))update(merged.items);
+    if(merged.items.length!==itemsRef.current.length||merged.items.some((item,index)=>item!==itemsRef.current[index]))update(merged.items);
     if(merged.pageCount!==pageCountRef.current)updatePageCount(merged.pageCount);
     setPast(history=>history.map(book=>mergeNotebooks(base,book,syncNotebook.notebook)));
     setFuture(history=>history.map(book=>mergeNotebooks(base,book,syncNotebook.notebook)));
