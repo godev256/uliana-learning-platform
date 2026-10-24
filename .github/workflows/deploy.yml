@@ -63,6 +63,13 @@ jobs:
         run: npm run verify:live-pages
       - name: Clipboard image loading feedback and recovery
         run: npm run verify:paste-feedback
+      - name: Capture failed browser checks
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure-screenshots
+          path: playwright-report/*.png
+          retention-days: 3
       - name: Validate both container images without publishing
         run: |
           APP_DOMAIN=ulianaa-learning.pro API_DOMAIN=api.ulianaa-learning.pro POSTGRES_PASSWORD=ci-config-only JWT_SECRET=ci-config-only IMAGE_TAG="$GITHUB_SHA" \
