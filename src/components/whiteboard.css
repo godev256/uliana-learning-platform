@@ -531,7 +531,6 @@
 .board-group-contents .board-topic-card.is-active { background:#e5efdf; }
 .board-group-contents .board-topic-rename { width:28px; }
 .board-group-contents .board-topic-row { grid-template-columns:minmax(0,1fr) 28px; }
-.board-group-add { justify-content:flex-start; min-height:44px; padding:6px; font-size:11px; }
 .board-group-empty { margin:6px 0; font-size:12px; color:#647269; }
 .board-ungrouped { display:grid; gap:6px; }
 .board-ungrouped h3 { display:flex; justify-content:space-between; margin:4px 2px; font-size:11px; font-weight:400; color:#647269; }
@@ -658,12 +657,10 @@
 }
 .board-catalog-current { margin:0 0 14px; padding:0 0 12px; border-top:0; border-bottom:1px solid #d7e1d8; }
 .board-catalog-current .board-action { justify-content:flex-start; gap:6px; padding:7px 0; font-size:11px; }
-.board-catalog-search input { width:100%; min-height:36px; margin-bottom:12px; padding:8px; border:1px solid #d0dbce; border-radius:8px; background:#fff; font:inherit; font-size:12px; color:#2f493f; }
 .board-catalog-settings { display:grid; gap:16px; }
 .board-catalog-settings > strong { overflow-wrap:anywhere; font-size:16px; font-weight:500; }
 .board-catalog-order { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .board-catalog-order > span { grid-column:1/-1; font-size:12px; }
-@media(max-width:1024px),(any-pointer:coarse){ .board-catalog-search input { font-size:16px; } }
 @media(max-width:1024px),(any-pointer:coarse){
  .whiteboard,.whiteboard .board-surface { touch-action:auto; }
  .whiteboard .board-toolbar { touch-action:pan-y; }
