@@ -406,6 +406,26 @@ func (h *Handler) account(w http.ResponseWriter, r *http.Request, action, operat
 			reply(w, 200, map[string]int64{"revision": revision})
 			return
 		}
+		if raw := r.URL.Query().Get("since"); raw != "" {
+			since, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil || since < 0 {
+				h.fail(w, model.Bad("Некорректная ревизия."))
+				return
+			}
+			book, err := h.Service.WaitBoard(ctx, principal, id, topic, since)
+			if err != nil {
+				if r.Context().Err() == nil {
+					h.fail(w, err)
+				}
+				return
+			}
+			if book == nil {
+				reply(w, 200, map[string]any{"revision": since, "unchanged": true})
+			} else {
+				reply(w, 200, book)
+			}
+			return
+		}
 		book, e := h.Service.Board(ctx, principal, id, topic)
 		if e != nil {
 			h.fail(w, e)

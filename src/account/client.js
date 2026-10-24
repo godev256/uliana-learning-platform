@@ -1,6 +1,6 @@
-export async function accountRequest(action,data,params={}){
+export async function accountRequest(action,data,params={},options={}){
  const query=new URLSearchParams({action,...params});
- const response=await fetch(`/api/account?${query}`,{method:data===undefined?'GET':'POST',credentials:'same-origin',cache:'no-store',headers:data===undefined?{}:{'Content-Type':'application/json'},...(data===undefined?{}:{body:JSON.stringify(data)})});
+ const response=await fetch(`/api/account?${query}`,{signal:options.signal,method:data===undefined?'GET':'POST',credentials:'same-origin',cache:'no-store',headers:data===undefined?{}:{'Content-Type':'application/json'},...(data===undefined?{}:{body:JSON.stringify(data)})});
  const result=await response.json().catch(()=>({error:'Кабинет временно недоступен.'}));
  if(!response.ok)throw Object.assign(new Error(result.error||'Не удалось выполнить действие.'),{status:response.status});return result;
 }
@@ -17,7 +17,7 @@ export async function sendAsset(id,blob,owner=boardOwner){
 export async function receiveAsset(id,owner=boardOwner){
  if(!owner)return null;
  let first;try{first=await accountRequest('asset',undefined,{studentId:owner,assetId:id,part:'0'});}catch(error){if(error.status===404)return null;throw error;}
- const chunks=[];
- for(let i=0;i<first.total;i++){const result=i===0?first:await accountRequest('asset',undefined,{studentId:owner,assetId:id,part:String(i)});chunks.push(Uint8Array.from(atob(result.data),c=>c.charCodeAt(0)));}
+ const chunks=new Array(first.total);
+ let next=0;await Promise.all(Array.from({length:Math.min(3,first.total)},async()=>{while(next<first.total){const i=next++,result=i===0?first:await accountRequest('asset',undefined,{studentId:owner,assetId:id,part:String(i)});chunks[i]=Uint8Array.from(atob(result.data),c=>c.charCodeAt(0));}}));
  return new Blob(chunks,{type:first.mime});
 }

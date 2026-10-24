@@ -37,6 +37,7 @@ type Boards interface {
 	RestoreTopic(context.Context, string, string) error
 	PurgeDeletedTopics(context.Context) error
 	ReorderTopics(context.Context, string, []string) error
+	BoardRevision(context.Context, string, string) (int64, error)
 	Board(context.Context, string, string) (model.Board, error)
 	SaveBoard(context.Context, string, string, model.Notebook, int64) (int64, error)
 }

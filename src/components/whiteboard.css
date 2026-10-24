@@ -615,3 +615,6 @@
 .board-paste-spinner { animation:board-paste-spin 1.1s linear infinite; transform-origin:0 0; }
 @keyframes board-paste-spin { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce){ .board-paste-spinner { animation:none; } }
+
+.board-preload-overlay { position:fixed; inset:0; z-index:200; background:#fbfaf6; }
+.board-image-load-error { position:fixed; left:50%; top:12px; transform:translateX(-50%); z-index:201; max-width:90vw; padding:8px 12px; border:1px solid #b77966; border-radius:12px; background:#fbfaf6; color:#2f493f; font-size:13px; }

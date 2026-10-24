@@ -1,4 +1,6 @@
 import {mergeNotebooks} from "../account/board-sync.js";
+import BoardLoading from "./BoardLoading.jsx";
+import {retainBoardImage,retryBoardImages} from "./board-image-cache.js";
 import BoardIcon from "./board-icons.jsx";
 import DrawingToolSettings from "./board-tool-settings.jsx";
 import PastePlaceholder from "./board-paste-placeholder.jsx";
@@ -88,6 +90,15 @@ async function renderPage(node) {
 export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNotebookChange,onNotebookPreview,onImagePasteWork,syncNotebook,cloudStatus,topicsPanel,pdfMode=false,studentMode=false,backHref="/",backLabel="← На сайт"}) {
   const [initial] = useState(()=>loadNotebook(initialNotebook,storageKey));
   const [items, setItems] = useState(initial.items);
+  const [pageImages]=useState(()=>[...new Set(initial.items.flatMap(item=>item.type==="image"&&item.assetId?[item.assetId]:item.coverId?[item.coverId]:[]))]);
+  const [imageLoad,setImageLoad]=useState({done:0,failed:0}),[imageAttempt,setImageAttempt]=useState(0);
+  useEffect(()=>{
+    let active=true,done=0,failed=0;setImageLoad({done,failed});
+    const retained=pageImages.map(id=>retainBoardImage(id));
+    for(const image of retained)void image.ready.catch(()=>{failed++;}).finally(()=>{image.release();done++;if(active)setImageLoad({done,failed});});
+    return()=>{active=false;retained.forEach(image=>image.release());};
+  },[pageImages,imageAttempt]);
+
   const itemsRef = useRef(items);
   const syncedNotebook=useRef(syncNotebook);
   const [pageCount, setPageCount] = useState(initial.pageCount);
@@ -133,6 +144,8 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   const [renameError,setRenameError] = useState("");
   const gesture = useRef(null);
   const strokeFrame = useRef(null);
+  const previewTimer=useRef(null),previewBook=useRef(null);
+  useEffect(()=>()=>clearTimeout(previewTimer.current),[]);
   const cancelStrokeFrame = () => {
     if (strokeFrame.current !== null) cancelAnimationFrame(strokeFrame.current);
     strokeFrame.current = null;
@@ -311,9 +324,15 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   }, [items, pageCount,storageKey,onNotebookChange]);
 
   useEffect(()=>{
-    if(!syncNotebook||syncNotebook===syncedNotebook.current||gesture.current)return;
-    const base=syncNotebook.base; syncedNotebook.current=syncNotebook;
-    if(!base)return;
+    if(!syncNotebook||syncNotebook===syncedNotebook.current)return;
+    const base=syncNotebook.base;if(!base)return;
+    // Rebase the eventual commit/cancel on incoming work even while the pointer
+    // is held. Otherwise finishing a long stroke could overwrite a pupil's ink.
+    if(gesture.current){
+      gesture.current.before=mergeNotebooks(base,{items:gesture.current.before,pageCount:pageCountRef.current},syncNotebook.notebook).items;
+      return;
+    }
+    syncedNotebook.current=syncNotebook;
     const merged=mergeNotebooks(base,{items:itemsRef.current,pageCount:pageCountRef.current},syncNotebook.notebook);
     if(JSON.stringify(merged.items)!==JSON.stringify(itemsRef.current))update(merged.items);
     if(merged.pageCount!==pageCountRef.current)updatePageCount(merged.pageCount);
@@ -321,8 +340,17 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     setFuture(history=>history.map(book=>mergeNotebooks(base,book,syncNotebook.notebook)));
   },[syncNotebook,draft]);
   useEffect(()=>{
-    if(onNotebookPreview&&draft&&["rotate","extend-line"].includes(gesture.current?.mode))onNotebookPreview({items:itemsRef.current.map(item=>item.id===draft.id?draft:item),pageCount:pageCountRef.current});
-  },[draft,onNotebookPreview]);
+    const current=gesture.current;
+    if(!onNotebookPreview||!draft||!current||["mark","rename"].includes(current.mode)){
+      clearTimeout(previewTimer.current);previewTimer.current=null;previewBook.current=null;return;
+    }
+    const rows=current.before;
+    previewBook.current={items:rows.some(item=>item.id===draft.id)?rows.map(item=>item.id===draft.id?draft:item):[...rows,draft],pageCount:pageCountRef.current};
+    // Throttle, rather than debounce: a long pen stroke must reach the pupil before release.
+    if(previewTimer.current===null)previewTimer.current=setTimeout(()=>{
+      previewTimer.current=null;if(previewBook.current)onNotebookPreview(previewBook.current);
+    },80);
+  },[draft,onNotebookPreview,syncNotebook]);
 
   useEffect(() => {
     const handle = event => {
@@ -954,6 +982,8 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   };
 
   return <main className={`whiteboard ${studentMode?"is-student":"is-teacher"}`} style={{"--board-zoom":zoom,"--board-view-width":viewportWidth?`${viewportWidth}px`:"100%","--board-eraser-cursor":eraserCursor(eraserSize)}}>
+    {imageLoad.done<pageImages.length&&<div className="board-preload-overlay"><BoardLoading label="Загружаем все страницы…" caption={`Изображения: ${imageLoad.done} из ${pageImages.length}`}/></div>}
+    {imageLoad.failed>0&&<div className="board-image-load-error" role="alert">Не все изображения загрузились. <button className="board-action" onClick={()=>{retryBoardImages();setImageAttempt(value=>value+1);}}>Повторить загрузку</button></div>}
     {settingsTool&&<DrawingToolSettings eraser={settingsTool==="eraser"} eraserMode={eraserMode} onEraserMode={setEraserMode} anchor={drawingButtons.current[settingsTool]} highlighter={settingsTool==="highlighter"} colors={settingsTool==="highlighter"?highlightColors:colors} color={activeColor} size={settingsTool==="eraser"?eraserSize:activeSize} onChange={settingsTool==="eraser"?(_key,value)=>setEraserSize(value):editStyle} onClose={closeToolSettings}/>}
     <div className="board-surface">
     <header className="board-header">

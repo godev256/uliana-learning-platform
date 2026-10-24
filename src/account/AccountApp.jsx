@@ -64,7 +64,7 @@ function CloudBoard({id,topicId='main',studentMode,topicTitle,topicsPanel,before
  const sync=useRef(null),suffix=topicId==='main'?id:`${id}:${topicId}`,draftKey=`uliana-account-draft:${suffix}`;
  const load=useCallback((remote,book)=>{
   sync.current?.stop();setBoardOwner(id);
-  const session=new BoardSync({remote,local:book,request:body=>accountRequest('board',body===undefined?undefined:{...body,studentId:id,topicId},{studentId:id,topicId}),
+  const session=new BoardSync({remote,local:book,request:(body,options={})=>accountRequest('board',body===undefined?undefined:{...body,studentId:id,topicId},{studentId:id,topicId,...(options.wait?{since:String(options.since)}:{})},options),
    onRemote:(notebook,base)=>setData(current=>({...current,syncNotebook:{notebook,base}})),
    onState:state=>{setSyncState(state);try{if(state.dirty)localStorage.setItem(draftKey,JSON.stringify({revision:state.revision,notebook:state.notebook}));else localStorage.removeItem(draftKey);setLocalCopy(true);}catch{setLocalCopy(false);}}
   });sync.current=session;setData({...remote,notebook:book,syncNotebook:null});session.start();session.state();

@@ -37,16 +37,20 @@ func writePages(ctx context.Context, tx *sql.Tx, student, id string, book model.
 	if err != nil {
 		return err
 	}
+	// One round trip for the page set, and no row rewrite for unchanged pages.
+	insert := builder.Insert("pages").Columns("student_id", "board_id", "number", "items")
 	for number := 0; number < book.PageCount; number++ {
 		data, err := json.Marshal(pages[number])
 		if err != nil {
 			return err
 		}
-		_, err = builder.Insert("pages").Columns("student_id", "board_id", "number", "items").Values(student, id, number, string(data)).Suffix("ON CONFLICT(student_id,board_id,number) DO UPDATE SET items=EXCLUDED.items").RunWith(tx).ExecContext(ctx)
-		if err != nil {
-			return err
-		}
+		insert = insert.Values(student, id, number, string(data))
 	}
+	_, err = insert.Suffix("ON CONFLICT(student_id,board_id,number) DO UPDATE SET items=EXCLUDED.items WHERE pages.items IS DISTINCT FROM EXCLUDED.items").RunWith(tx).ExecContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	_, err = builder.Delete("pages").Where(sq.Eq{"student_id": student, "board_id": id}).Where(sq.GtOrEq{"number": book.PageCount}).RunWith(tx).ExecContext(ctx)
 	return err
 }
@@ -204,6 +208,13 @@ func (s *Store) ReorderTopics(ctx context.Context, student string, ids []string)
 		}
 	}
 	return tx.Commit()
+}
+
+// BoardRevision avoids loading and decoding every page while clients wait for edits.
+func (s *Store) BoardRevision(ctx context.Context, student, id string) (int64, error) {
+	var revision int64
+	err := builder.Select("revision").From("boards").Where(sq.Eq{"student_id": student, "id": id, "deleted_at": nil}).RunWith(s.DB).QueryRowContext(ctx).Scan(&revision)
+	return revision, translate(err)
 }
 func (s *Store) Board(ctx context.Context, student, id string) (model.Board, error) {
 	var out model.Board

@@ -144,7 +144,37 @@ func TestPostgresHTTPWorkflow(t *testing.T) {
 		t.Fatal("initial revision")
 	}
 	notebook := model.Notebook{PageCount: 3, Items: []json.RawMessage{json.RawMessage(`{"id":"cube","type":"viz-cube","page":1,"rotation":[15,30,0],"points":[[80,80],[1520,980]],"color":"#2f493f","size":4,"edgePoints":[{"id":"M","edge":[0,1],"t":0.5,"label":"M"}],"customFutureField":{"preserve":true}}`), json.RawMessage(`{"id":"ink","type":"pen","page":0,"color":"#212123","size":4,"points":[[10,10],[20,25]]}`)}}
+	student.call("GET", "/api/account?action=board&studentId="+otherID+"&since=0", nil, 403)
+	teacher.call("GET", path+"&since=-1", nil, 400)
+	live := make(chan *http.Response, 1)
+	liveErrors := make(chan error, 1)
+	go func() {
+		response, err := teacher.http.Get(server.URL + path + "&since=0")
+		if err != nil {
+			liveErrors <- err
+			return
+		}
+		live <- response
+	}()
+	time.Sleep(150 * time.Millisecond)
+	sentAt := time.Now()
 	result := student.call("POST", path, map[string]any{"notebook": notebook, "revision": rev}, 200)
+	select {
+	case response := <-live:
+		defer response.Body.Close()
+		var message model.Board
+		if response.StatusCode != 200 || json.NewDecoder(response.Body).Decode(&message) != nil || message.Revision != 1 || len(message.Notebook.Items) != 2 {
+			t.Fatal("long poll lost board update")
+		}
+		if time.Since(sentAt) > time.Second {
+			t.Fatal("long poll update took longer than one second")
+		}
+	case err := <-liveErrors:
+		t.Fatal(err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("long poll did not deliver the edit promptly")
+	}
+
 	if decode[int64](t, result["revision"]) != 1 {
 		t.Fatal("revision not incremented")
 	}
@@ -161,6 +191,10 @@ func TestPostgresHTTPWorkflow(t *testing.T) {
 		if !bytes.Equal(ja, jb) {
 			t.Fatal("changed drawing fields or order")
 		}
+	}
+	idle := teacher.call("GET", path+"&since=1", nil, 200)
+	if !decode[bool](t, idle["unchanged"]) || idle["notebook"] != nil {
+		t.Fatal("idle heartbeat must not resend all pages")
 	}
 	var pages int
 	if err = store.DB.QueryRowContext(ctx, "SELECT count(*) FROM pages WHERE student_id=$1 AND board_id='main'", u.ID).Scan(&pages); err != nil || pages != 3 {

@@ -98,9 +98,9 @@ function InkPath({ item, pathProps }) {
   return <path {...pathProps} d={d} />;
 }
 
-// Committed ink does not change while another stroke is being drawn.
+// Static page content does not change while another stroke is being drawn.
 export const BoardShape = memo(BoardShapeContent, (previous, next) =>
-  ["pen", "highlighter"].includes(next.item.type) && previous.item === next.item &&
+  !isVisualization(next.item.type) && next.item.type!=="attachment" && previous.item === next.item &&
   previous.erase === next.erase && previous.preview === next.preview && previous.selectable === next.selectable);
 
 export function FigureIcon({ type }) {

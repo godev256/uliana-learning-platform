@@ -194,6 +194,40 @@ func (s *Service) Board(ctx context.Context, p model.Principal, id, topic string
 	book.Student = u
 	return book, err
 }
+
+// WaitBoard returns only when a new revision exists, or after an idle heartbeat.
+// Scope is authorized before waiting; each revision query still excludes deleted boards.
+func (s *Service) WaitBoard(ctx context.Context, p model.Principal, id, topic string, since int64) (*model.Board, error) {
+	u, err := s.Owner(ctx, p, id)
+	if err != nil {
+		return nil, err
+	}
+	if topic == "" {
+		topic = "main"
+	}
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	deadline := time.NewTimer(10 * time.Second)
+	defer deadline.Stop()
+	for {
+		revision, err := s.Boards.BoardRevision(ctx, u.ID, topic)
+		if err != nil {
+			return nil, err
+		}
+		if revision != since {
+			book, err := s.Boards.Board(ctx, u.ID, topic)
+			book.Student = u
+			return &book, err
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-deadline.C:
+			return nil, nil
+		case <-ticker.C:
+		}
+	}
+}
 func (s *Service) SaveBoard(ctx context.Context, p model.Principal, id, topic string, book model.Notebook, revision int64) (int64, error) {
 	u, err := s.Owner(ctx, p, id)
 	if err != nil {

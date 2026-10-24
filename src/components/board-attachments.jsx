@@ -1,15 +1,17 @@
 import BoardIcon from "./board-icons.jsx";
 import { useEffect,useState } from "react";
 import { readAsset,downloadAsset } from "./board-assets.js";
+import {retainBoardImage} from "./board-image-cache.js";
 import { pdfPageImage } from "./board-pdf.js";
 export function useAssetUrl(id,source) {
-  const [result,setResult]=useState(null);
+  const [result,setResult]=useState(null),[attempt,setAttempt]=useState(0);
+  useEffect(()=>{const retry=()=>setAttempt(value=>value+1);window.addEventListener("board-image-retry",retry);return()=>window.removeEventListener("board-image-retry",retry);},[]);
   useEffect(()=>{
     if(!id)return;
-    let active=true,url;
-    readAsset(id).then(blob=>{if(active&&blob){url=URL.createObjectURL(blob);setResult({id,url});}}).catch(()=>{});
-    return ()=>{active=false;if(url)URL.revokeObjectURL(url);};
-  },[id]);
+    let active=true;const retained=retainBoardImage(id);
+    retained.ready.then(url=>{if(active)setResult({id,url});}).catch(()=>{});
+    return ()=>{active=false;retained.release();};
+  },[id,attempt]);
   return source || (result && result.id===id ? result.url : undefined);
 }
 export function AssetImage({assetId,src,...props}) {

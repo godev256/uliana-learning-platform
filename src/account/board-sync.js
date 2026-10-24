@@ -17,7 +17,10 @@ function mergeValue(base,local,remote){
 }
 export function mergeNotebooks(base,local,remote){
  const book=mergeValue(base,local,remote);
- return {...book,pageCount:Math.max(book.pageCount,...book.items.map(item=>item.page+1))};
+ const previous=new Map(local.items.map(item=>[item.id,item]));
+ // Preserve unchanged SVG/image components when another page receives a stroke.
+ const items=book.items.map(item=>equal(previous.get(item.id),item)?previous.get(item.id):item);
+ return {...book,items,pageCount:Math.max(book.pageCount,...items.map(item=>item.page+1))};
 }
 export class BoardSync {
  constructor({remote,local=remote.notebook,request,onRemote=()=>{},onState=()=>{}}){
@@ -26,16 +29,19 @@ export class BoardSync {
  get dirty(){return !equal(this.local,this.base);}
  state(error){this.lastError=error;if(!this.stopped)this.onState({dirty:this.dirty,saving:!!this.saving,error,revision:this.revision,notebook:this.local});}
  change(book){if(this.stopped||equal(book,this.local))return;this.local=book;this.state();this.schedule();}
- schedule(){if(!this.timer&&!this.stopped)this.timer=setTimeout(()=>{this.timer=null;void this.flush();},150);}
+ schedule(){if(!this.timer&&!this.stopped)this.timer=setTimeout(()=>{this.timer=null;void this.flush();},80);}
  accept(remote){
-  if(remote.revision<=this.revision)return;
+  if(this.stopped||remote.unchanged||remote.revision<=this.revision)return;
   const previous=this.local;
   this.local=mergeNotebooks(this.base,this.local,remote.notebook);this.base=remote.notebook;this.revision=remote.revision;
   if(!this.stopped){this.onRemote(this.local,previous);this.state();}
  }
- async refresh(){
-  if(this.stopped||this.saving||this.reading)return;
-  this.reading=true;try{this.accept(await this.request());if(this.dirty)this.schedule();else this.state();}catch(error){this.state(error);}finally{this.reading=false;}
+ async refresh(wait=false){
+  if(this.stopped||this.reading)return;
+  this.reading=true;const controller=new AbortController();this.readController=controller;
+  try{const remote=await this.request(undefined,{wait,since:this.revision,signal:controller.signal});if(this.saving)await this.saving;this.accept(remote);if(this.dirty)this.schedule();else if(this.lastError)this.state();}
+  catch(error){if(!this.stopped&&error.name!=="AbortError")this.state(error);}
+  finally{this.reading=false;if(this.readController===controller)this.readController=null;}
  }
  flush(){
   clearTimeout(this.timer);this.timer=null;
@@ -52,6 +58,9 @@ export class BoardSync {
   })().finally(()=>{this.saving=null;this.state(this.lastError);});
   return this.saving;
  }
- start(){this.poll=setInterval(()=>void this.refresh(),400);if(this.dirty)this.schedule();}
- stop(){this.stopped=true;clearInterval(this.poll);clearTimeout(this.timer);}
+ start(){
+  const poll=async()=>{if(this.stopped)return;await this.refresh(true);if(!this.stopped)this.poll=setTimeout(poll,this.lastError?1000:100);};
+  void poll();if(this.dirty)this.schedule();
+ }
+ stop(){this.stopped=true;clearTimeout(this.poll);clearTimeout(this.timer);this.readController?.abort();}
 }
