@@ -1,4 +1,5 @@
 import {mergeNotebooks} from "../account/board-sync.js";
+import RemoteCursors from "./board-remote-cursors.jsx";
 import BoardLoading from "./BoardLoading.jsx";
 import {retainBoardImage,retryBoardImages} from "./board-image-cache.js";
 import BoardIcon from "./board-icons.jsx";
@@ -71,7 +72,7 @@ function loadNotebook(source,storageKey=NOTEBOOK_KEY) {
 
 async function renderPage(node) {
   const copy = node.cloneNode(true);
-  copy.querySelectorAll("[data-axis-controls], [data-selection-controls], [data-selection-hit], [data-viz-controls], [data-pending-image]").forEach(node => node.remove());
+  copy.querySelectorAll("[data-axis-controls], [data-selection-controls], [data-selection-hit], [data-viz-controls], [data-pending-image], [data-remote-cursor]").forEach(node => node.remove());
   await Promise.all([...copy.querySelectorAll("image[data-board-asset]")].map(async node=>{
     const blob=await readAsset(node.dataset.boardAsset);if(!blob)throw new Error("Файл не найден");node.setAttribute("href",await blobDataUrl(blob));
   }));
@@ -87,7 +88,7 @@ async function renderPage(node) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNotebookChange,onNotebookPreview,onImagePasteWork,syncNotebook,cloudStatus,topicsPanel,pdfMode=false,studentMode=false,backHref="/",backLabel="← На сайт"}) {
+export default function Whiteboard({presence,initialNotebook,storageKey=NOTEBOOK_KEY,onNotebookChange,onNotebookPreview,onImagePasteWork,syncNotebook,cloudStatus,topicsPanel,pdfMode=false,studentMode=false,backHref="/",backLabel="← На сайт"}) {
   const [initial] = useState(()=>loadNotebook(initialNotebook,storageKey));
   const [items, setItems] = useState(initial.items);
   const [pageImages]=useState(()=>[...new Set(initial.items.flatMap(item=>item.type==="image"&&item.assetId?[item.assetId]:item.coverId?[item.coverId]:[]))]);
@@ -100,6 +101,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   },[pageImages,imageAttempt]);
 
   const itemsRef = useRef(items);
+  const lastNotifiedBook=useRef({items:initial.items,pageCount:initial.pageCount});
   const syncedNotebook=useRef(syncNotebook);
   const [pageCount, setPageCount] = useState(initial.pageCount);
   const pageCountRef = useRef(pageCount);
@@ -320,7 +322,8 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
   useEffect(() => {
     try { localStorage.setItem(storageKey, JSON.stringify({ items, pageCount })); if(!cloudStatus)setStatus("Сохранено в этом браузере"); }
     catch { setStatus("Не удалось сохранить. Скачайте PDF, чтобы не потерять записи."); }
-    onNotebookChange?.({items,pageCount});
+    const book={items,pageCount};
+    if(JSON.stringify(book)!==JSON.stringify(lastNotifiedBook.current)){lastNotifiedBook.current=book;onNotebookChange?.(book);}
   }, [items, pageCount,storageKey,onNotebookChange]);
 
   useEffect(()=>{
@@ -334,6 +337,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     }
     syncedNotebook.current=syncNotebook;
     const merged=mergeNotebooks(base,{items:itemsRef.current,pageCount:pageCountRef.current},syncNotebook.notebook);
+    lastNotifiedBook.current=merged;onNotebookChange?.(merged);
     if(JSON.stringify(merged.items)!==JSON.stringify(itemsRef.current))update(merged.items);
     if(merged.pageCount!==pageCountRef.current)updatePageCount(merged.pageCount);
     setPast(history=>history.map(book=>mergeNotebooks(base,book,syncNotebook.notebook)));
@@ -633,14 +637,18 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     if (event.button !== 0 || gesture.current || cropId || event.target.closest("[data-brand-strip]")) return;
     event.preventDefault();
     const page = Number(event.currentTarget.dataset.pageIndex);
-    if(studentMode&&tool==="select"){setSelectedId(null);setSelectedIds([]);setSelectedAxesId(null);startPan(event);return;}
+    if(studentMode&&tool==="select"){
+      const hit=event.target.closest('[data-select-id], [data-shape-id], [data-resize-id]');
+      const target=itemsRef.current.find(item=>item.id===(hit?.dataset.selectId??hit?.dataset.shapeId??hit?.dataset.resizeId));
+      if(!target||target.background||["image","attachment","pen","highlighter"].includes(target.type)){setSelectedId(null);setSelectedIds([]);setSelectedAxesId(null);startPan(event);return;}
+    }
     if(tool==="select"){
       const previous=lastSelectionPress.current,now=performance.now();
       const twice=previous&&previous.page===page&&now-previous.time<450&&Math.hypot(event.clientX-previous.x,event.clientY-previous.y)<16;
       lastSelectionPress.current={page,time:now,x:event.clientX,y:event.clientY};
       const groupHit=event.target.closest('[data-group-selection]');
       const objectHit=event.target.closest('[data-select-id], [data-shape-id], [data-resize-id]');
-      if((twice&&!objectHit&&!groupHit)||(!objectHit&&!groupHit&&event.pointerType!=="touch"&&!window.matchMedia(BOARD_TOUCH_QUERY).matches)){
+      if(!studentMode&&((twice&&!objectHit&&!groupHit)||(!objectHit&&!groupHit&&event.pointerType!=="touch"&&!window.matchMedia(BOARD_TOUCH_QUERY).matches))){
         event.currentTarget.setPointerCapture(event.pointerId);
         const origin=point(event);setSelectedId(null);setSelectedIds([]);setGroupDraft(null);
         gesture.current={mode:"marquee",pointerId:event.pointerId,before:itemsRef.current,page,start:origin,end:origin};
@@ -655,7 +663,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     }
     const handle = event.target.closest("[data-resize-id]");
     const visualization = event.target.closest("[data-viz-body], [data-viz-header]");
-    if(studentMode&&visualization?.hasAttribute("data-viz-header")){startPan(event);return;}
+
     if (!handle && visualization && (tool === "select" || tool === "visualization")) {
       const id = visualization.closest("[data-shape-id]")?.dataset.shapeId;
       const item = itemsRef.current.find(item => item.id === id && item.page === page);
@@ -837,6 +845,11 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
     gesture.current = { pointerId: event.pointerId, before: itemsRef.current, eraserSize, eraserMode, item: { id, page, type: tool, color: tool === "highlighter" ? highlightColor : color, size: tool === "highlighter" ? highlightSize : size, points: [point(event)], ...(tool === "pen" ? { smoothing: 2, smoothingDistance } : tool === "highlighter" ? { smoothing: 1 } : {}) } };
     if (tool === "eraser") erase(event); else setDraft(gesture.current.item);
   };
+  const indicate=event=>{
+    if(!presence)return;const bounds=event.currentTarget.getBoundingClientRect();
+    const x=(event.clientX-bounds.left)*PAGE_WIDTH/bounds.width,y=(event.clientY-bounds.top)*PAGE_HEIGHT/bounds.height;
+    presence.move(x>=0&&x<=DRAW_WIDTH&&y>=0&&y<=PAGE_HEIGHT?{page:Number(event.currentTarget.dataset.pageIndex),x,y}:null);
+  };
   const move = event => {
     if (movePan(event)) return;
     const current = gesture.current;
@@ -999,10 +1012,10 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
         <button type="button" className="board-tool" aria-label="Добавить PDF в эту доску" title="Добавить PDF в эту доску" disabled={fileBusy||pageCount>=100} onClick={()=>pdfInsertInput.current?.click()}><BoardIcon name="pdf-add"/></button>
         <input ref={pdfInsertInput} type="file" accept="application/pdf,.pdf" hidden aria-label="PDF в текущую доску" disabled={fileBusy} onChange={event=>{const file=event.target.files?.[0];event.target.value="";if(file)setInsertPdf({file,index:0,progress:"",error:""});}}/>
         <input ref={fileInput} type="file" multiple hidden aria-label="Выбрать файлы с устройства" onChange={event=>{const files=[...event.target.files];event.target.value="";void importFiles(files);}}/></>}
-        {!studentMode&&<details ref={figuresMenu} className="board-figures">
+        {<details ref={figuresMenu} className="board-figures">
           <summary className={`board-tool ${activeFigure ? "is-active" : ""}`} aria-label="Фигуры" title="Фигуры"><BoardIcon name="figures"/></summary>
           <div className="board-figures-panel" role="group" aria-label="Фигуры">
-            {figureGroups.filter(group=>!pdfMode||!group.figures.some(([value])=>isVisualization(value))).map(group => <div className="board-figure-group" role="group" aria-label={group.title} key={group.title}>
+            {figureGroups.filter(group=>studentMode||!pdfMode||!group.figures.some(([value])=>isVisualization(value))).map(group => <div className="board-figure-group" role="group" aria-label={group.title} key={group.title}>
               <h2>{group.title}</h2>
               {group.figures.map(([value, label]) => <button key={value} type="button" className="board-tool" aria-label={isVisualization(value) ? `${label} — 3D-визуализация` : undefined} aria-pressed={tool === value} onClick={() => { if (isVisualization(value)) insertVisualization(value); else setTool(value); figuresMenu.current.open = false; figuresMenu.current.querySelector("summary")?.focus(); }}><FigureIcon type={value} />{label}</button>)}
             </div>)}
@@ -1019,7 +1032,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       <div><button className="board-action" type="button" aria-label="Уменьшить лист" disabled={zoom<=BOARD_MIN_ZOOM} onClick={()=>changeZoom(zoom-.25)}><BoardIcon name="minus"/></button><button className="board-action board-zoom-reset" type="button" aria-label="Исходный размер листа" title={`Вернуть масштаб ${Math.round(defaultZoom*100)}%`} onClick={()=>changeZoom(defaultZoom)}>{Math.round(zoom*100)}%</button><button className="board-action" type="button" aria-label="Приблизить лист" disabled={zoom>=4} onClick={()=>changeZoom(zoom+.25)}><BoardIcon name="plus"/></button></div>
       {!["select","pen","highlighter","eraser"].includes(tool)&&<button className="board-action" type="button" aria-expanded={optionsOpen} aria-controls="board-drawing-options" onClick={()=>setOptionsOpen(!optionsOpen)}>Цвет и толщина <BoardIcon name={optionsOpen?"chevron-up":"chevron-down"}/></button>}
     </div>
-    {!studentMode && tool === "select" && !groupItems.length && (selectedSolid || selectedItem?.type==="attachment") && selectedItem?.type!=="image" && (!pdfMode||selectedItem?.type==="attachment") && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
+    {tool === "select" && !groupItems.length && (selectedSolid || selectedItem?.type==="attachment") && selectedItem?.type!=="image" && (!pdfMode||studentMode||selectedItem?.type==="attachment") && !(selectedItem && isVisualization(selectedItem.type)) && <div className="board-selection-bar" role="group" aria-label="Управление 3D-фигурой">
       {selectedItem?.type==="attachment" ? <button className="board-action" onClick={()=>{setFileNotice("");setOpenFile(selectedItem.id);}}>Открыть файл</button> : <>
       <span>3D</span>
       <button className="board-action" type="button" disabled={!selectedSolid} aria-pressed={manipulation === "move"} onClick={()=>setManipulation("move")}>Перемещать</button>
@@ -1040,21 +1053,21 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
       <div className="board-sheet-stage"><div className="board-pages" ref={contentRef}>
       {Array.from({ length: pageCount }, (_, page) => <section className="board-page" key={page} aria-label={`Лист ${page + 1}`}>
       <h2 className="board-page-label">Лист {page + 1} <span>A4</span></h2>
-      <svg ref={node => { sheets.current[page] = node; }} data-page-index={page} className={`board-paper ${tool === "highlighter" ? "is-highlighting" : ""} ${tool === "eraser" ? "is-erasing" : tool === "select" ? `is-selecting ${manipulation === "rotate" ? "is-rotating" : ""}` : ""}`} viewBox={`0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}`} aria-label={`Поле для рисования, лист ${page + 1}`} onPointerDown={start} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish}>
+      <svg ref={node => { sheets.current[page] = node; }} data-page-index={page} className={`board-paper ${tool === "highlighter" ? "is-highlighting" : ""} ${tool === "eraser" ? "is-erasing" : tool === "select" ? `is-selecting ${manipulation === "rotate" ? "is-rotating" : ""}` : ""}`} viewBox={`0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}`} aria-label={`Поле для рисования, лист ${page + 1}`} onPointerEnter={indicate} onPointerLeave={event=>{if(event.pointerType==="touch")presence?.releaseTouch();else presence?.move(null);}} onPointerDown={event=>{indicate(event);start(event);}} onPointerMove={event=>{move(event);indicate(event);}} onPointerUp={event=>{finish(event);if(event.pointerType==="touch")presence?.releaseTouch();}} onPointerCancel={event=>{finish(event);presence?.move(null);}}>
         <defs><pattern id={`board-grid-${page}`} width={GRID_SIZE} height={GRID_SIZE} patternUnits="userSpaceOnUse"><path d={`M ${GRID_SIZE} 0 L 0 0 0 ${GRID_SIZE}`} fill="none" stroke="#e2e9e4" strokeWidth="1" /></pattern></defs>
         <rect width={PAGE_WIDTH} height={PAGE_HEIGHT} fill="#ffffff" />
         {grid && !items.some(item=>item.page===page && item.background) && <rect data-page-grid="true" width={PAGE_WIDTH} height={PAGE_HEIGHT} fill={`url(#board-grid-${page})`} />}
         {[...displayedItems.filter(item=>item.page===page && item.id!==draft?.id),...(draft?.page===page ? [draft] : [])].sort((a,b)=>Number(b.type==="image")-Number(a.type==="image")).map(item=><Shape key={item.id} item={item} erase={inkItem(item) && !item.background && item.id!==draft?.id && tool==="eraser"} onFileOpen={id=>{setFileNotice("");setOpenFile(id);}} selectable={tool==="select" || tool==="axes" && item.type==="axes"} visualization={visualizationProps(item)}/>)}
         {pendingImages.filter(job=>job.page===page).map(job=><PastePlaceholder key={job.id} job={job} scale={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)} onRetry={()=>retryImagePaste(job.id)} onDismiss={()=>dismissPasteJob(job.id)}/>)}
-        {!studentMode && tool === "select" && displayedItems.filter(item => item.page === page && !item.background && !isVisualization(item.type)).map(item => <SelectionHitArea key={item.id} item={draft?.id === item.id ? draft : item} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
-        {!studentMode && tool === "select" && !cropId && (draft?.id === selectedId ? [draft] : items.filter(item => item.id === selectedId)).filter(item => item.page === page).map(item => <SelectionControls key={item.id} item={item} onCrop={()=>setCropId(item.id)} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
+        {tool === "select" && displayedItems.filter(item => item.page === page && !item.background && !isVisualization(item.type) && (!studentMode||!["image","attachment","pen","highlighter"].includes(item.type))).map(item => <SelectionHitArea key={item.id} item={draft?.id === item.id ? draft : item} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
+        {tool === "select" && !cropId && (draft?.id === selectedId ? [draft] : items.filter(item => item.id === selectedId)).filter(item => item.page === page && (!studentMode||!["image","attachment","pen","highlighter"].includes(item.type))).map(item => <SelectionControls key={item.id} item={item} onCrop={()=>setCropId(item.id)} scale={PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH)} />)}
         {!studentMode&&tool==="select"&&groupItems.length>0&&groupItems[0].page===page&&(()=>{
           const box=groupBounds(groupItems),scale=PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH),padding=6*scale;
           return <g data-selection-controls="true"><rect data-group-selection="true" x={box.x-padding} y={box.y-padding} width={box.width+padding*2} height={box.height+padding*2} fill="#2f493f" fillOpacity=".045" stroke="#2f493f" strokeWidth={scale} strokeDasharray={`${6*scale} ${4*scale}`} className="board-group-selection"/><text x={box.x} y={Math.max(16*scale,box.y-12*scale)} fill="#2f493f" fontSize={12*scale} pointerEvents="none">Выделено: {groupItems.length}</text></g>;
         })()}
         {!studentMode&&cropId&&items.filter(item=>item.id===cropId&&item.type==="image"&&item.page===page).map(item=><ImageCrop key={item.id} item={item} scale={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)} pageWidth={PAGE_WIDTH} pageHeight={PAGE_HEIGHT} onApply={applyImageCrop} onClose={()=>setCropId(null)}/>)}
         {marquee?.page===page&&<rect data-selection-controls="true" data-marquee="true" x={marquee.x} y={marquee.y} width={marquee.width} height={marquee.height} fill="#537361" fillOpacity=".1" stroke="#2f493f" strokeWidth={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)} strokeDasharray="8 6" pointerEvents="none"/>}
-        {!studentMode && tool === "axes" && (draft?.type === "axes" ? [draft] : items.filter(item => item.id === selectedAxesId)).filter(item => item.page === page && item.points.length === 2).map(item => <g key={item.id} data-axis-controls="true">
+        {tool === "axes" && (draft?.type === "axes" ? [draft] : items.filter(item => item.id === selectedAxesId)).filter(item => item.page === page && item.points.length === 2).map(item => <g key={item.id} data-axis-controls="true">
           {item.points.map(([x, y], index) => {
             const scale = PAGE_WIDTH / (sheets.current[page]?.getBoundingClientRect().width || PAGE_WIDTH);
             return <g key={index}>
@@ -1063,6 +1076,7 @@ export default function Whiteboard({initialNotebook,storageKey=NOTEBOOK_KEY,onNo
             </g>;
           })}
         </g>)}
+        <RemoteCursors presence={presence} page={page} scale={PAGE_WIDTH/(sheets.current[page]?.getBoundingClientRect().width||PAGE_WIDTH)}/>
         <g data-brand-strip="true" aria-label="ulianaa-learning.pro">
           <rect x={DRAW_WIDTH} width={BRAND_WIDTH} height={PAGE_HEIGHT} fill="#2f493f" />
           <text data-brand-handle="true" transform={`translate(${DRAW_WIDTH + BRAND_WIDTH / 2} ${PAGE_HEIGHT - 90}) rotate(-90)`} dominantBaseline="central" fill="#D3E4D8" fontFamily="Golos Text, Arial, sans-serif" fontSize="28" letterSpacing="2">ulianaa-learning.pro</text>

@@ -17,8 +17,8 @@ try{for(const engine of [chromium,webkit]){
   const hand=page.getByRole('button',{name:'Ладошка',exact:true}),viewport=page.locator('.board-sheet-viewport');
   if(role==='student'){
    assert.equal(await hand.getAttribute('aria-pressed'),'true','Student starts with navigation');
-   for(const name of ['Клетка','+ Добавить лист','Удалить лист','Загрузить файл','Фигуры'])assert.equal(await page.getByRole('button',{name,exact:true}).count(),0);
-   assert.equal(await page.locator('.board-grid-toggle,.board-figures,.board-selection-bar').count(),0);
+   for(const name of ['Клетка','+ Добавить лист','Удалить лист','Загрузить файл'])assert.equal(await page.getByRole('button',{name,exact:true}).count(),0);
+   assert.equal(await page.locator('.board-grid-toggle,.board-selection-bar').count(),0);
    const before=await stored();
    for(const id of ['photo','box','ink','file','cube']){
     const target=page.locator(`[data-shape-id="${id}"]`).first();await target.scrollIntoViewIfNeeded();await frame();const r=await target.boundingBox(),x=r.x+r.width/2,y=r.y+r.height/2,scroll=await viewport.evaluate(el=>el.scrollTop);

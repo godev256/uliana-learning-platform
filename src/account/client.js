@@ -1,6 +1,6 @@
 export async function accountRequest(action,data,params={},options={}){
  const query=new URLSearchParams({action,...params});
- const response=await fetch(`/api/account?${query}`,{signal:options.signal,method:data===undefined?'GET':'POST',credentials:'same-origin',cache:'no-store',headers:data===undefined?{}:{'Content-Type':'application/json'},...(data===undefined?{}:{body:JSON.stringify(data)})});
+ const response=await fetch(`/api/account?${query}`,{signal:options.signal,keepalive:options.keepalive,method:data===undefined?'GET':'POST',credentials:'same-origin',cache:'no-store',headers:data===undefined?{}:{'Content-Type':'application/json'},...(data===undefined?{}:{body:JSON.stringify(data)})});
  const result=await response.json().catch(()=>({error:'Кабинет временно недоступен.'}));
  if(!response.ok)throw Object.assign(new Error(result.error||'Не удалось выполнить действие.'),{status:response.status});return result;
 }

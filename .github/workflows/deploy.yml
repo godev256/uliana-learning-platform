@@ -59,6 +59,8 @@ jobs:
         run: npm run verify:teacher-touch
       - name: Laptop tool tiles and PDF insertion into existing boards
         run: npm run verify:inline-pdf
+      - name: Shared cursors and pupil figure catalogue
+        run: npm run verify:presence-figures
       - name: Live ink and preloaded multipage boards
         run: npm run verify:live-pages
       - name: Clipboard image loading feedback and recovery

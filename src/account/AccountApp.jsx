@@ -10,6 +10,7 @@ import LessonNotes from './LessonNotes.jsx';
 import {TopicPanel} from '../components/board-topics.jsx';
 import {preparePdfTopic} from '../components/board-pdf-topic.js';
 import './account.css';
+import {BoardPresence} from './board-presence.js';
 import {BoardSync} from './board-sync.js';
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Moscow'}).format(new Date());
 const Message=({error})=>error?<p className="account-error" role="alert">{error}</p>:null;
@@ -59,21 +60,22 @@ function AccountBoards({id,studentMode}){
 }
 function CloudBoard({id,topicId='main',studentMode,topicTitle,topicsPanel,beforeSwitch}){
  const[data,setData]=useState(null),[error,setError]=useState(''),[recovery,setRecovery]=useState(null),[syncState,setSyncState]=useState({dirty:false}),[localCopy,setLocalCopy]=useState(true);
- const imagePasteWork=useRef(new Set());
+ const imagePasteWork=useRef(new Set()),presence=useRef(null);
  const trackImagePaste=useCallback(work=>{imagePasteWork.current.add(work);void work.finally(()=>imagePasteWork.current.delete(work)).catch(()=>{});},[]);
  const sync=useRef(null),suffix=topicId==='main'?id:`${id}:${topicId}`,draftKey=`uliana-account-draft:${suffix}`;
  const load=useCallback((remote,book)=>{
-  sync.current?.stop();setBoardOwner(id);
+  sync.current?.stop();presence.current?.stop();setBoardOwner(id);
+  presence.current=new BoardPresence((body,options)=>accountRequest("presence",{...body,studentId:id,topicId},{},options));presence.current.start();
   const session=new BoardSync({remote,local:book,request:(body,options={})=>accountRequest('board',body===undefined?undefined:{...body,studentId:id,topicId},{studentId:id,topicId,...(options.wait?{since:String(options.since)}:{})},options),
    onRemote:(notebook,base)=>setData(current=>({...current,syncNotebook:{notebook,base}})),
    onState:state=>{setSyncState(state);try{if(state.dirty)localStorage.setItem(draftKey,JSON.stringify({revision:state.revision,notebook:state.notebook}));else localStorage.removeItem(draftKey);setLocalCopy(true);}catch{setLocalCopy(false);}}
-  });sync.current=session;setData({...remote,notebook:book,syncNotebook:null});session.start();session.state();
+  });sync.current=session;setData({...remote,notebook:book,syncNotebook:null,presence:presence.current});session.start();session.state();
  },[id,topicId,draftKey]);
  useEffect(()=>{let active=true;accountRequest('board',undefined,{studentId:id,topicId}).then(remote=>{
   if(!active)return;let draft;try{draft=JSON.parse(localStorage.getItem(draftKey));}catch{}
   if(draft&&JSON.stringify(draft.notebook)!==JSON.stringify(remote.notebook)&&draft.revision!==remote.revision){setRecovery({remote,draft});return;}
   load(remote,draft?.notebook??remote.notebook);
- }).catch(err=>{if(active)setError(err.message);});return()=>{active=false;sync.current?.stop();setBoardOwner(null);};},[id,topicId,draftKey,load]);
+ }).catch(err=>{if(active)setError(err.message);});return()=>{active=false;sync.current?.stop();presence.current?.stop();setBoardOwner(null);};},[id,topicId,draftKey,load]);
  const changed=useCallback(notebook=>sync.current?.change(notebook),[]);
  const flush=useCallback(async()=>{while(imagePasteWork.current.size)await Promise.allSettled([...imagePasteWork.current]);return sync.current?.flush()??true;},[]);
  useEffect(()=>{beforeSwitch.current=flush;return()=>{if(beforeSwitch.current===flush)beforeSwitch.current=null;};},[beforeSwitch,flush]);
@@ -82,7 +84,7 @@ function CloudBoard({id,topicId='main',studentMode,topicTitle,topicsPanel,before
  if(recovery)return <div className="account-shell"><section className="account-card"><h1>На устройстве остались записи</h1><p>Доска также изменилась в другом окне. Выберите версию, которую хотите открыть. Восстановление записей с устройства заменит сохранённую версию.</p><button className="account-secondary" onClick={()=>{localStorage.removeItem(draftKey);load(recovery.remote,recovery.remote.notebook);setRecovery(null);}}>Открыть сохранённую версию</button><button className="account-primary" onClick={()=>{load(recovery.remote,recovery.draft.notebook);setRecovery(null);}}>Восстановить мои записи</button></section></div>;
  if(!data)return <BoardLoading/>;
  const status=!localCopy?'Не удалось сохранить копию на устройстве. Скачайте PDF.':syncState.error?'Связь прервана. Записи на этом устройстве сохранены; повторяем подключение.':'Доска сохраняется автоматически.';
- return <Whiteboard studentMode={studentMode} pdfMode={data.topic?.kind==='pdf'} topicsPanel={topicsPanel} initialNotebook={data.notebook} syncNotebook={data.syncNotebook} storageKey={`uliana-account-board:${suffix}`} onNotebookChange={changed} onNotebookPreview={changed} onImagePasteWork={trackImagePaste} backHref="/cabinet" backLabel="← В кабинет" cloudStatus={<>{data.student.login} · {topicTitle??data.topic?.title} · {status}{syncState.error&&syncState.dirty&&<button type="button" className="account-inline" onClick={flush}>Повторить сохранение</button>}</>}/>;
+ return <Whiteboard presence={data.presence} studentMode={studentMode} pdfMode={data.topic?.kind==='pdf'} topicsPanel={topicsPanel} initialNotebook={data.notebook} syncNotebook={data.syncNotebook} storageKey={`uliana-account-board:${suffix}`} onNotebookChange={changed} onNotebookPreview={changed} onImagePasteWork={trackImagePaste} backHref="/cabinet" backLabel="← В кабинет" cloudStatus={<>{data.student.login} · {topicTitle??data.topic?.title} · {status}{syncState.error&&syncState.dirty&&<button type="button" className="account-inline" onClick={flush}>Повторить сохранение</button>}</>}/>;
 }
 export default function AccountApp({personalBoard=false}){
  const[session,setSession]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');

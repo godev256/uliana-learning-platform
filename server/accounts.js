@@ -1,3 +1,4 @@
+import {exchangeCursors} from './board-presence.js';
 import {randomUUID} from 'node:crypto';
 import {database,production} from './database.js';
 import {hash,validLogin,validPassword,passwordHash,checkPassword,newToken,sessionCookie,readToken} from './security.js';
@@ -67,13 +68,20 @@ export default async function accounts(req,res){
   }
   const studentId=session.role==='student'?session.id:(body.studentId||url.searchParams.get('studentId'));
   if(session.role==='student'&&(body.studentId&&body.studentId!==session.id||url.searchParams.get('studentId')&&url.searchParams.get('studentId')!==session.id))fail(403,'Этот кабинет вам недоступен.');
-  const student=(await query("SELECT id,login,role FROM account_users WHERE id=?",[studentId||'']))[0];if(!student||(student.role!=='student'&&!(session.role==='teacher'&&student.id===session.id&&['topics','board','asset'].includes(action))))fail(404,'Кабинет не найден.');
+  const student=(await query("SELECT id,login,role FROM account_users WHERE id=?",[studentId||'']))[0];if(!student||(student.role!=='student'&&!(session.role==='teacher'&&student.id===session.id&&['topics','board','asset','presence'].includes(action))))fail(404,'Кабинет не найден.');
   if(action==='password'&&req.method==='POST'){
    teacher();if(!validPassword(body.password))fail(400,'Пароль: от 10 до 128 символов.');await query('UPDATE account_users SET password_hash=? WHERE id=?',[await passwordHash(body.password),student.id]);await query('DELETE FROM account_sessions WHERE user_id=?',[student.id]);return reply(200,{ok:true});
   }
   if(action==='profile'){
    if(req.method==='POST'){teacher();const data=validateProfile(body);for(const lesson of data.lessons){if(!lesson.attachment)continue;const parts=await query('SELECT part,total,mime,data FROM account_assets WHERE student_id=? AND asset_id=? ORDER BY part',[student.id,lesson.attachment.assetId]);if(!parts.length||parts.length!==parts[0].total||parts.some((part,index)=>part.part!==index||part.total!==parts.length||part.mime!=='application/pdf')||Buffer.from(parts[0].data,'base64').subarray(0,5).toString()!=='%PDF-'||parts.reduce((sum,part)=>sum+Buffer.from(part.data,'base64').length,0)!==lesson.attachment.size)fail(400,'PDF-конспект не загрузился полностью. Прикрепите его заново.');}await query('INSERT INTO account_profiles(student_id,schedule,lessons) VALUES(?,?,?) ON CONFLICT(student_id) DO UPDATE SET schedule=excluded.schedule,lessons=excluded.lessons',[student.id,JSON.stringify(data.schedule),JSON.stringify(data.lessons)]);if(data.calendar!==undefined)await query('INSERT INTO account_calendar(student_id,changes) VALUES(?,?) ON CONFLICT(student_id) DO UPDATE SET changes=excluded.changes',[student.id,JSON.stringify(data.calendar)]);return reply(200,{ok:true});}
    const profile=(await query('SELECT schedule,lessons FROM account_profiles WHERE student_id=?',[student.id]))[0];const calendar=(await query('SELECT changes FROM account_calendar WHERE student_id=?',[student.id]))[0];return reply(200,{student,schedule:JSON.parse(profile?.schedule||'[]'),lessons:JSON.parse(profile?.lessons||'[]'),calendar:JSON.parse(calendar?.changes||'[]')});
+  }
+  if(action==='presence'){
+   if(req.method!=='POST')fail(405,'Нужен POST.');
+   const topicId=body.topicId||'main',c=body.cursor;
+   if(typeof body.clientId!=='string'||!/^[a-zA-Z0-9_-]{16,80}$/.test(body.clientId)||typeof topicId!=='string'||topicId.length>80||c!==null&&(!c||!Number.isInteger(c.page)||c.page<0||c.page>=100||!Number.isFinite(c.x)||!Number.isFinite(c.y)||c.x<0||c.x>1680||c.y<0||c.y>2376))fail(400,'Некорректный указатель.');
+   if(!(await query('SELECT id FROM account_board_topics WHERE student_id=? AND id=? AND deleted_at IS NULL',[student.id,topicId])).length)fail(404,'Доска не найдена.');
+   return reply(200,{peers:exchangeCursors(student.id+':'+topicId,session.id+':'+body.clientId,session.role,c)});
   }
   if(action==='topics'||action==='board'){
    // Copy the existing notebook once; topic 'main' keeps legacy URLs working.

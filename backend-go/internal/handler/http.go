@@ -21,12 +21,15 @@ import (
 const cookieName = "uliana_go_session"
 
 type Handler struct {
+	cursors cursorStore
 	Service *service.Service
 	Config  config.Config
 	Ping    func(context.Context) error
 	Log     *slog.Logger
 }
 type request struct {
+	ClientID  string          `json:"clientId"`
+	Cursor    *boardCursor    `json:"cursor"`
 	Login     string          `json:"login"`
 	Password  string          `json:"password"`
 	StudentID string          `json:"studentId"`
@@ -311,6 +314,9 @@ func (h *Handler) account(w http.ResponseWriter, r *http.Request, action, operat
 		return
 	}
 	switch action {
+	case "presence":
+		h.presence(w, r, principal, body, id, topic)
+		return
 	case "password":
 		if !write {
 			break

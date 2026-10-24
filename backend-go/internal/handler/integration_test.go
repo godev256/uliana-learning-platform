@@ -143,6 +143,29 @@ func TestPostgresHTTPWorkflow(t *testing.T) {
 	if rev != 0 {
 		t.Fatal("initial revision")
 	}
+	presencePath := "/api/account?action=presence&studentId=" + u.ID
+	teacherCursor := map[string]any{"studentId": u.ID, "clientId": "teacher-cursor-client", "cursor": map[string]any{"page": 0, "x": 220, "y": 330}}
+	teacher.call("POST", presencePath, teacherCursor, 200)
+	peerResult := student.call("POST", presencePath, map[string]any{"clientId": "student-cursor-client", "cursor": nil, "role": "teacher"}, 200)
+	peers := decode[[]map[string]json.RawMessage](t, peerResult["peers"])
+	if len(peers) != 1 || decode[string](t, peers[0]["role"]) != "teacher" {
+		t.Fatal("shared teacher cursor missing")
+	}
+	student.call("POST", presencePath, map[string]any{"clientId": "student-cursor-client", "cursor": map[string]any{"page": 2, "x": 400, "y": 500}, "role": "teacher"}, 200)
+	peerResult = teacher.call("POST", presencePath, teacherCursor, 200)
+	peers = decode[[]map[string]json.RawMessage](t, peerResult["peers"])
+	if len(peers) != 1 || decode[string](t, peers[0]["role"]) != "student" {
+		t.Fatal("cursor identity must come from authentication")
+	}
+	student.call("POST", "/api/account?action=presence&studentId="+otherID, map[string]any{"clientId": "student-cursor-client", "cursor": nil}, 403)
+	other.call("POST", presencePath, teacherCursor, 401)
+	teacher.call("POST", presencePath+"&topicId=missing", teacherCursor, 404)
+	teacher.call("POST", presencePath, map[string]any{"clientId": "teacher-cursor-client", "cursor": map[string]any{"page": -1, "x": 0, "y": 0}}, 400)
+	teacher.call("POST", presencePath, map[string]any{"clientId": "teacher-cursor-client", "cursor": nil}, 200)
+	student.call("POST", presencePath, map[string]any{"clientId": "student-cursor-client", "cursor": nil}, 200)
+	if decode[int64](t, teacher.call("GET", path, nil, 200)["revision"]) != 0 {
+		t.Fatal("cursor must not persist as a notebook revision")
+	}
 	notebook := model.Notebook{PageCount: 3, Items: []json.RawMessage{json.RawMessage(`{"id":"cube","type":"viz-cube","page":1,"rotation":[15,30,0],"points":[[80,80],[1520,980]],"color":"#2f493f","size":4,"edgePoints":[{"id":"M","edge":[0,1],"t":0.5,"label":"M"}],"customFutureField":{"preserve":true}}`), json.RawMessage(`{"id":"ink","type":"pen","page":0,"color":"#212123","size":4,"points":[[10,10],[20,25]]}`)}}
 	student.call("GET", "/api/account?action=board&studentId="+otherID+"&since=0", nil, 403)
 	teacher.call("GET", path+"&since=-1", nil, 400)

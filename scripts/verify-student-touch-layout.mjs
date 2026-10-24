@@ -15,7 +15,7 @@ try{for(const engine of [chromium,webkit]){
   const viewport=page.locator('.board-sheet-viewport'),tools=page.locator('.board-toolbar'),zoom=page.locator('.board-zoom-reset');
   const box=await viewport.boundingBox(),toolbar=await tools.boundingBox();assert.ok(box.width>=width-2,'Full screen width for sheet');assert.ok(box.height>=height-46,'Only compact header reserves vertical space');assert.equal(toolbar.width,44);assert.ok(toolbar.x>=box.x&&toolbar.x<box.x+60,'Tools float over the paper');
   for(const name of ['Ладошка','Ручка','Ластик','Отменить','Приблизить лист']){const b=await page.getByRole('button',{name,exact:true}).boundingBox();assert.ok(b&&b.width>=44&&b.height>=44&&b.y+b.height<=height,`${name} is touch-sized and onscreen`);}
-  for(const name of ['Загрузить файл','Фигуры','Удалить лист'])assert.equal(await page.getByRole('button',{name,exact:true}).count(),0);
+  for(const name of ['Загрузить файл','Удалить лист'])assert.equal(await page.getByRole('button',{name,exact:true}).count(),0);
   const download=await page.getByRole('button',{name:'Скачать доску PDF',exact:true}).boundingBox(),line=await page.getByRole('button',{name:'Линия',exact:true}).boundingBox();assert.equal(download.x,line.x);assert.ok(download.y>=line.y+line.height,'Download follows line');
   const panX=async delta=>{const x=width*.5,y=box.y+Math.min(180,box.height*.5);await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+delta,y,{steps:8});await page.mouse.up();await page.evaluate(()=>new Promise(requestAnimationFrame));};
   const paper=page.locator('.board-paper').first();const originalX=(await paper.boundingBox()).x;

@@ -16,7 +16,7 @@ try{for(const engine of [chromium,webkit]){const browser=await engine.launch();t
  const t=await tc.newPage(),s=await sc.newPage(),errors=[];for(const p of[t,s])p.on('pageerror',e=>errors.push(e.message));
  await Promise.all([t.goto(`${origin}/cabinet/board/${id}`),s.goto(`${origin}/cabinet/board/${id}`)]);await Promise.all([t.locator('.board-paper').first().waitFor(),s.locator('.board-paper').first().waitFor()]);
  await t.locator('summary[aria-label="Фигуры"]').click();await t.getByRole('button',{name:'Куб — 3D-визуализация',exact:true}).click();await s.locator('[data-shape-type="viz-cube"]').waitFor();
- assert.equal(await s.locator('summary[aria-label="Фигуры"]').count(),0);assert.equal(await s.getByRole('button',{name:'Загрузить файл',exact:true}).count(),0);
+ assert.equal(await s.locator('summary[aria-label="Фигуры"]').count(),1);assert.equal(await s.getByRole('button',{name:'Загрузить файл',exact:true}).count(),0);
  const card=p=>p.locator('[data-shape-type="viz-cube"]'),shape=p=>card(p).locator('polygon').first().getAttribute('points');
  async function rotate(p,hold=false){await card(p).getByRole('button',{name:'Вращать',exact:true}).click();await p.locator('.board-sheet-viewport').evaluate(n=>n.scrollTop=0);const b=await card(p).locator('[data-viz-body]').boundingBox(),x=b.x+b.width*.5,y=Math.min(b.y+b.height*.5,750);await p.mouse.move(x,y);await p.mouse.down();await p.mouse.move(x+65,y+30,{steps:8});if(!hold)await p.mouse.up();}
  const initial=await shape(s);await rotate(t,true);await s.waitForFunction(before=>document.querySelector('[data-shape-type="viz-cube"] polygon')?.getAttribute('points')!==before,initial);assert.equal(await s.locator('[data-shape-type="viz-cube"]').count(),1);await t.mouse.up();
